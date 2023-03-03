@@ -122,8 +122,8 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             staticAnalyzer.Initialize();
             staticAnalyzer.Solve();
 
-            inspectMethodAllElemmentGradients(0,  model);
-            inspectMethodAllElemmentGradients(1, model);
+            //inspectMethodAllElemmentGradients(0,  model);
+            //inspectMethodAllElemmentGradients(1, model);
             List<double> displacements = new List<double>();
 
             for (var iter = 0; iter < 2; ++iter)
@@ -142,20 +142,20 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
 
         }
 
-        public void inspectMethodAllElemmentGradients(int increment, Model model)
-        {
-            double[] xCoeefsOfElementsOverTime = new double[model.ElementsDictionary.Count];
-            double[] yCoeefsOfElementsOverTime = new double[model.ElementsDictionary.Count];
-            double[] zCoeefsOfElementsOverTime = new double[model.ElementsDictionary.Count];
-            int counter = 0;
-            foreach (var element in model.ElementsDictionary)
-            {
-                xCoeefsOfElementsOverTime[counter] = ((ConvectionDiffusionElement3D)element.Value).xcoeff_OverTimeAtGp1[increment];
-                yCoeefsOfElementsOverTime[counter] = ((ConvectionDiffusionElement3D)element.Value).ycoeff_OverTimeAtGp1[increment];
-                zCoeefsOfElementsOverTime[counter] = ((ConvectionDiffusionElement3D)element.Value).zcoeff_OverTimeAtGp1[increment];
-                counter++;
-            }
-        }
+        //public void inspectMethodAllElemmentGradients(int increment, Model model)
+        //{
+        //    double[] xCoeefsOfElementsOverTime = new double[model.ElementsDictionary.Count];
+        //    double[] yCoeefsOfElementsOverTime = new double[model.ElementsDictionary.Count];
+        //    double[] zCoeefsOfElementsOverTime = new double[model.ElementsDictionary.Count];
+        //    int counter = 0;
+        //    foreach (var element in model.ElementsDictionary)
+        //    {
+        //        xCoeefsOfElementsOverTime[counter] = ((ConvectionDiffusionElement3D)element.Value).xcoeff_OverTimeAtGp1[increment];
+        //        yCoeefsOfElementsOverTime[counter] = ((ConvectionDiffusionElement3D)element.Value).ycoeff_OverTimeAtGp1[increment];
+        //        zCoeefsOfElementsOverTime[counter] = ((ConvectionDiffusionElement3D)element.Value).zcoeff_OverTimeAtGp1[increment];
+        //        counter++;
+        //    }
+        //}
 
 
         [Theory]

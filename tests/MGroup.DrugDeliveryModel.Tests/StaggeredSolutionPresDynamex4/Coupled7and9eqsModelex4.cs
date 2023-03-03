@@ -19,6 +19,7 @@ using MGroup.MSolve.AnalysisWorkflow;
 using MGroup.MSolve.Solution;
 using MGroup.FEM.ConvectionDiffusion.Isoparametric;
 using MGroup.FEM.Structural.Continuum;
+using ab = MGroup.DrugDeliveryModel.Tests.Commons.Utilities;
 
 namespace MGroup.DrugDeliveryModel.Tests.Integration
 {
@@ -106,7 +107,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
                 //---------------
                 //no coupling commented out update of shared quantities
                 //
-                pressureTensorDivergenceAtElementGaussPoints[elem.Key] = ((ConvectionDiffusionElement3D)model[0].ElementsDictionary[elem.Key]).pressureTensorDivergenceAtGaussPoints;
+                pressureTensorDivergenceAtElementGaussPoints[elem.Key] = ab.ScalePressureTensorDiv(((ConvectionDiffusionElement3D)model[0].ElementsDictionary[elem.Key]).pressureTensorDivergenceAtGaussPoints);
             }
             foreach (var elem in reader.ElementConnectivity)
             {

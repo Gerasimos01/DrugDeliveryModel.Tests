@@ -248,15 +248,15 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
                 structuralResultsZ[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[1].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[1].GetNode(structuralMonitorID), StructuralDof.TranslationZ];
 
 
-                modelMax_dP_dxOverTime[currentTimeStep] =
-                    ((ConvectionDiffusionElement3D)equationModel.model[0].ElementsDictionary[divPMonitorId])
-                    .xcoeff_OverTimeAtGp1[0];
-                modelMax_dP_dyOverTime[currentTimeStep] =
-                    ((ConvectionDiffusionElement3D)equationModel.model[0].ElementsDictionary[divPMonitorId])
-                    .ycoeff_OverTimeAtGp1[0];
-                modelMax_dP_dzOverTime[currentTimeStep] =
-                    ((ConvectionDiffusionElement3D)equationModel.model[0].ElementsDictionary[divPMonitorId])
-                    .zcoeff_OverTimeAtGp1[0];
+                //modelMax_dP_dxOverTime[currentTimeStep] =
+                //    ((ConvectionDiffusionElement3D)equationModel.model[0].ElementsDictionary[divPMonitorId])
+                //    .xcoeff_OverTimeAtGp1[0];
+                //modelMax_dP_dyOverTime[currentTimeStep] =
+                //    ((ConvectionDiffusionElement3D)equationModel.model[0].ElementsDictionary[divPMonitorId])
+                //    .ycoeff_OverTimeAtGp1[0];
+                //modelMax_dP_dzOverTime[currentTimeStep] =
+                //    ((ConvectionDiffusionElement3D)equationModel.model[0].ElementsDictionary[divPMonitorId])
+                //    .zcoeff_OverTimeAtGp1[0];
 
 
 

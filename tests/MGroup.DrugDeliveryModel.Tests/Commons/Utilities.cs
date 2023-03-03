@@ -299,5 +299,20 @@ namespace MGroup.DrugDeliveryModel.Tests.Commons
 			                  nodes[id].Z);
 			return id;
 		}
-	}
+
+        public static  double[][] ScalePressureTensorDiv(double[][] pressureTensordivAtGps)
+        {
+            double[][] scaledPressureTensorDivergenceValues = new double[pressureTensordivAtGps.Length][];
+            for (int i = 0; i < pressureTensordivAtGps.Length; i++)
+            {
+                scaledPressureTensorDivergenceValues[i] = new double[pressureTensordivAtGps[i].Length];
+                for (int i1 = 0; i1 < pressureTensordivAtGps[i].Length; i1++)
+                {
+                    scaledPressureTensorDivergenceValues[i][i1] = -pressureTensordivAtGps[i][i1];
+                }
+            }
+
+            return scaledPressureTensorDivergenceValues;
+        }
+    }
 }
