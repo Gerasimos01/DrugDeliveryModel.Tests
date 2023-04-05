@@ -35,6 +35,7 @@
     <ProjectReference Include="..\..\..\Solvers\src\MGroup.Solvers\MGroup.Solvers.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="COx\CoxWithFuncBuilder\" />
     <Folder Include="StaggeredSolutionPresDynamex8\results1\" />
     <Folder Include="StaggeredSolutionPresDynamex7\results1\" />
     <Folder Include="StaggeredTCell" />
