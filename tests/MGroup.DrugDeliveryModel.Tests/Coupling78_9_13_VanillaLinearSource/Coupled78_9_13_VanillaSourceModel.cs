@@ -22,7 +22,7 @@ using MGroup.FEM.Structural.Continuum;
 
 namespace MGroup.DrugDeliveryModel.Tests.Integration
 {
-	public class Coupled78_9_13_VanillaSourceModel
+    public class Coupled78_9_13_VanillaSourceModel
     {
         public Eq78ModelProviderForStaggeredSolutionex7ref Eq78ModelProvider { get; set; }
         public CoxVanillaSourceModelBuilder CoxModelProvider { get; set; }
@@ -87,7 +87,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             this.kth = kth;
 
             this.timeStep = timeStep;
-            this.totalTime  = totalTime;
+            this.totalTime = totalTime;
             this.incrementsPerStep = incrementsPerStep;
 
             // intialize array ofm models1.
@@ -120,9 +120,9 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             {//CALCULATE vf = kP + vs
                 FluidSpeed[elem.Key] = new double[3]
                 {
-                    (-(pressureTensorDivergenceAtElementGaussPoints[elem.Key][0][0] * kth) + ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][0]) * 10,
-                    (-(pressureTensorDivergenceAtElementGaussPoints[elem.Key][0][1] * kth) + ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][1]) * 10,
-                    (-(pressureTensorDivergenceAtElementGaussPoints[elem.Key][0][2] * kth) + ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][2]) * 10,
+                    (-(pressureTensorDivergenceAtElementGaussPoints[elem.Key][0][0] * kth) + ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][0]) * 1000,
+                    (-(pressureTensorDivergenceAtElementGaussPoints[elem.Key][0][1] * kth) + ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][1]) * 1000,
+                    (-(pressureTensorDivergenceAtElementGaussPoints[elem.Key][0][2] * kth) + ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][2]) * 1000,
                 };
             }
             model = new Model[3];
@@ -172,22 +172,22 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
                 foreach (var elem in reader.ElementConnectivity)
                 {//CALCULATE vf = kP + vs
                  //vs
-                     FluidSpeed[elem.Key] = new double[3]
-                     {
-                         (-(pressureTensorDivergenceAtElementGaussPoints[elem.Key][0][0] * kth) + ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][0]) * 10,
-                         (-(pressureTensorDivergenceAtElementGaussPoints[elem.Key][0][1] * kth) + ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][1]) * 10,
-                         (-(pressureTensorDivergenceAtElementGaussPoints[elem.Key][0][2] * kth) + ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][2]) * 10,
-                     };
+                    FluidSpeed[elem.Key] = new double[3]
+                    {
+                         (-(pressureTensorDivergenceAtElementGaussPoints[elem.Key][0][0] * kth) + ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][0]) * 1000,
+                         (-(pressureTensorDivergenceAtElementGaussPoints[elem.Key][0][1] * kth) + ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][1]) * 1000,
+                         (-(pressureTensorDivergenceAtElementGaussPoints[elem.Key][0][2] * kth) + ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][2]) * 1000,
+                    };
                 }
             }
 
 
             model = new Model[3];
-            
+
             //Create Initial Model eq78 (fluid pressure)
             model[0] = Eq78ModelProvider.GetModel();
             Eq78ModelProvider.AddBoundaryConditions(model[0]);
-            if(CurrentTimeStep==0)
+            if (CurrentTimeStep == 0)
             {
                 //Eq78ModelProvider.AddEq78ModelInitialConditions(model[0]);
             }
