@@ -143,6 +143,8 @@ namespace MGroup.DrugDeliveryModel.Tests.COx.EqCoxLinAndNLin
             return (Cox) => -PerOx * Sv; //Linear
         }
 
+
+        //exoume allaxei builder (neos apo Theofilo  alla) mikres minor apokliseis sta expeceted kai uparxei kai path apo google docs gia na ta xanaftiaxoume
         [Theory]
         [InlineData("../../../DataFiles/workingTetMesh2185_1Domain.mphtxt")]
         public void SolveEquationCOxNonLinearProduction(string fileName)
@@ -167,7 +169,11 @@ namespace MGroup.DrugDeliveryModel.Tests.COx.EqCoxLinAndNLin
 
             var nodeIdToMonitor = Utilities.FindNodeIdFromNodalCoordinates(mesh.NodesDictionary, monitorNodeCoords, 1e-4);
 
-            var modelBuilder = new CoxModelBuilder(mesh, FluidSpeed, Dox, Aox, Kox, PerOx, Sv, CiOx, T, CoxInitialCondition, independentLinearSource, ProductionFuncsWithoutConstantTerm, ProductionFuncsWithoutConstantTermDerivative, nodeIdToMonitor, coxMonitorDOF, convectionDiffusionDirichletBC, convectionDiffusionNeumannBC);
+            var modelBuilder = new CoxModelBuilder(mesh, FluidSpeed, Dox, Aox, Kox, PerOx, Sv, CiOx, T, CoxInitialCondition, independentLinearSource, null,
+                ProductionFuncsWithoutConstantTerm, ProductionFuncsWithoutConstantTermDerivative, nodeIdToMonitor, coxMonitorDOF, convectionDiffusionDirichletBC, convectionDiffusionNeumannBC);
+
+            
+
             var model = modelBuilder.GetModel();
             modelBuilder.AddBoundaryConditions(model);
 
