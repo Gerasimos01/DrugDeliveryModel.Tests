@@ -12,8 +12,7 @@ using MGroup.NumericalAnalyzers.Staggered;
 using MGroup.NumericalAnalyzers.Discretization.NonLinear;
 using MGroup.Constitutive.Structural;
 using MGroup.DrugDeliveryModel.Tests.Commons;
-using MGroup.NumericalAnalyzers;
-using MGroup.Solvers.Direct;
+
 using Xunit;
 using MGroup.Constitutive.ConvectionDiffusion;
 using MGroup.FEM.ConvectionDiffusion.Isoparametric;
@@ -116,9 +115,18 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
 
         //30 step - fluid velocity test
         static double[] monitoredGPCoordsVelocity = new double[] { 0.08, 0.08, 0.08 };
+        #region All Logging Coordinates and ids
+
+        //Solid Displacement
+
+
+        //Solid velocity
+        static double[] solidVelocityGPCoords = new double[] {  0.08, 0.08, 0.08  };
+        static int solidVelocityGPId;
 
         #endregion
 
+        #endregion
         #region Darcy model
 
         //Darcy model properties
@@ -206,7 +214,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
         //static double[] monitoredGPcoordsPresGradient = new double[] { 0.055, 0.0559, 0.05 };
 
         //30 step - fluid velocity test
-        static double[] monitoredGPcoordsPresGradient = new double[] { 0.08, 0.08, 0.08 };
+        static double[] monitoredGPcoordsPresGradient = new double[] { 0.05, 0.05, 0.05 };
 
         //30 step - fluid velocity test
         static double[] monitoredGPcoordsFluidVelocity = new double[] { 0.08, 0.08, 0.08 };
@@ -357,6 +365,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             //pressureMonitorID = structuralMonitorID;
             coxMonitorID = Utilities.FindNodeIdFromNodalCoordinates(comsolReader.NodesDictionary, coxMonitorNodeCoords, 1e-2);
             fluidVelocityMonitorID = Utilities.FindNodeIdFromNodalCoordinates(comsolReader.NodesDictionary, monitoredGPcoordsFluidVelocity, 1e-2);
+            solidVelocityGPId = Utilities.FindNodeIdFromNodalCoordinates(comsolReader.NodesDictionary, solidVelocityGPCoords, 1e-2);
             var p_i = new double[(int)(totalTime / timeStep)];
 
             double[] structuralResultsX = new double[(int)(totalTime / timeStep)];
@@ -461,10 +470,10 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
                 gp_dP_dx_OverTime[currentTimeStep] = ((ConvectionDiffusionElement3D)equationModel.model[0].ElementsDictionary[monitoredGPpressureGrad_elemID]).xcoeff_OverTimeAtGp1[0];
                 gp_dP_dy_OverTime[currentTimeStep] = ((ConvectionDiffusionElement3D)equationModel.model[0].ElementsDictionary[monitoredGPpressureGrad_elemID]).ycoeff_OverTimeAtGp1[0];
                 gp_dP_dz_Overtime[currentTimeStep] = ((ConvectionDiffusionElement3D)equationModel.model[0].ElementsDictionary[monitoredGPpressureGrad_elemID]).zcoeff_OverTimeAtGp1[0];
-                gp_dut_dx_OverTime[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[monitoredGPVelocity_elemID]).velocityDivergence_term1[0];
-                gp_dvt_dy_OverTime[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[monitoredGPVelocity_elemID]).velocityDivergence_term2[0];
-                gp_dwt_dz_OverTime[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[monitoredGPVelocity_elemID]).velocityDivergence_term3[0];
-                gp_div_v_OverTime[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[monitoredGPVelocity_elemID]).velocityDivergence[0];
+                gp_dut_dx_OverTime[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[solidVelocityGPId]).velocityDivergence_term1[0];
+                gp_dvt_dy_OverTime[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[solidVelocityGPId]).velocityDivergence_term2[0];
+                gp_dwt_dz_OverTime[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[solidVelocityGPId]).velocityDivergence_term3[0];
+                gp_div_v_OverTime[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[solidVelocityGPId]).velocityDivergence[0];
 
                 var fluidVelocityX = coxModel.FluidSpeed[monitoredGPVelocity_elemID][0];
                 var fluidVelocityY = coxModel.FluidSpeed[monitoredGPVelocity_elemID][1];
@@ -473,9 +482,9 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
                 vFluid_t[currentTimeStep] = fluidVelocityY;
                 wFluid_t[currentTimeStep] = fluidVelocityZ;
 
-                solidVelocityResultsX[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[monitoredGPVelocity_elemID]).velocity[0][0];
-                solidVelocityResultsY[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[monitoredGPVelocity_elemID]).velocity[0][1];
-                solidVelocityResultsZ[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[monitoredGPVelocity_elemID]).velocity[0][2];
+                solidVelocityResultsX[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[solidVelocityGPId]).velocity[0][0];
+                solidVelocityResultsY[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[solidVelocityGPId]).velocity[0][1];
+                solidVelocityResultsZ[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[solidVelocityGPId]).velocity[0][2];
 
 
                 coxResults[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[2].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[2].GetNode(coxMonitorID), coxMonitorDOF];
@@ -523,19 +532,21 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
 
             Assert.True(ResultChecker.CheckResults(wFluid_t, expected_fluid_velocity(), 1e-3));
             Assert.True(ResultChecker.CheckResults(structuralResultsZ, expectedDisplacments(), 1e-3));
+            Assert.True(ResultChecker.CheckResults(gp_dP_dx_OverTime, expected_dpdx_values(), 1e-3));
+            Assert.True(ResultChecker.CheckResults(gp_dP_dy_OverTime, expected_dpdy_values(), 1e-3));
+            Assert.True(ResultChecker.CheckResults(gp_dP_dz_Overtime, expected_dpdz_values(), 1e-3));
+            Assert.True(ResultChecker.CheckResults(p_i, expectedPressurevalues(), 1e-3));
+
 
             Assert.True(ResultChecker.CheckResults(solidVelocityResultsX, expectedSolidVelocityX(), 1e-3));
             Assert.True(ResultChecker.CheckResults(solidVelocityResultsY, expectedSolidVelocityY(), 1e-3));
             Assert.True(ResultChecker.CheckResults(solidVelocityResultsZ, expectedSolidVelocityZ(), 1e-3));
 
-            Assert.True(ResultChecker.CheckResults(p_i, expectedPressurevalues(), 1e-3));
             Assert.True(ResultChecker.CheckResults(gp_dut_dx_OverTime, expected_dutdx_values(), 1e-3));
             Assert.True(ResultChecker.CheckResults(gp_dvt_dy_OverTime, expected_dvtdy_values(), 1e-3));
             Assert.True(ResultChecker.CheckResults(gp_dwt_dz_OverTime, expected_dwtdz_values(), 1e-3));
-            //Assert.True(ResultChecker.CheckResults(gp_div_v_OverTime, expected_div_vs_values(), 1e-1));
-            Assert.True(ResultChecker.CheckResults(gp_dP_dx_OverTime, expected_dpdx_values(), 1e-3));
-            Assert.True(ResultChecker.CheckResults(gp_dP_dy_OverTime, expected_dpdy_values(), 1e-3));
-            Assert.True(ResultChecker.CheckResults(gp_dP_dz_Overtime, expected_dpdz_values(), 1e-3));
+            Assert.True(ResultChecker.CheckResults(gp_div_v_OverTime, expected_div_vs_values(), 1e-1));
+            
             //Assert.True(ResultChecker.CheckResults(coxResults, expectedCox(), 1E-1));
 
 
