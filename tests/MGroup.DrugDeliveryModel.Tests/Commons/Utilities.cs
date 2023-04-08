@@ -12,6 +12,10 @@ using MGroup.Constitutive.Structural;
 using MGroup.FEM.ConvectionDiffusion.Isoparametric;
 using MGroup.FEM.Structural.Continuum;
 using MGroup.MSolve.Discretization.Dofs;
+using MGroup.LinearAlgebra.Matrices;
+using MGroup.MSolve.AnalysisWorkflow;
+using MGroup.Solvers.AlgebraicModel;
+using MGroup.MSolve.Solution;
 
 namespace MGroup.DrugDeliveryModel.Tests.Commons
 {
@@ -299,5 +303,38 @@ namespace MGroup.DrugDeliveryModel.Tests.Commons
 			                  nodes[id].Z);
 			return id;
 		}
-	}
+
+        public static List<double[]> RetrieveStructuralSolution(ISolver solver, IChildAnalyzer childAnalyzer, Model model, GlobalAlgebraicModel<SkylineMatrix> algebraicModel)
+        {
+            List<double[]> displacemnts = new List<double[]>();
+
+            var u = childAnalyzer.CurrentAnalysisResult;
+
+            var currentSolution = algebraicModel.ExtractAllResults(u);
+
+            foreach (var node in model.NodesDictionary.Values)
+            {
+                displacemnts.Add(new double[] { currentSolution.Data[node.ID, 0], currentSolution.Data[node.ID, 1], currentSolution.Data[node.ID, 2] });
+            }
+
+            return displacemnts;
+        }
+
+        public static List<double>  RetrievePressureSolution(ISolver solver, IChildAnalyzer childAnalyzer, Model model, GlobalAlgebraicModel<Matrix> algebraicModel)
+        {
+            List<double> p = new List<double>();
+
+            var u = childAnalyzer.CurrentAnalysisResult;
+
+            var currentSolution = algebraicModel.ExtractAllResults(u);
+            //var freedofs = algebraicModel.SubdomainFreeDofOrdering;
+
+            foreach (var node in model.NodesDictionary.Values)
+            {
+                p.Add(currentSolution.Data[node.ID, 0]);
+            }
+
+            return p;
+        }
+    }
 }

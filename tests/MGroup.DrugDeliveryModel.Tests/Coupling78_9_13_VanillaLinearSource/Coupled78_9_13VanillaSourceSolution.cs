@@ -25,6 +25,8 @@ using TriangleNet.Meshing;
 using Castle.DynamicProxy.Generators.Emitters.SimpleAST;
 using System.Reflection.PortableExecutable;
 using static Xunit.Assert;
+using MGroup.MSolve.Discretization;
+using static MGroup.DrugDeliveryModel.Tests.Commons.Utilities;
 
 namespace MGroup.DrugDeliveryModel.Tests.Integration
 {
@@ -504,6 +506,57 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
                 {
                     Solution.Add(currentTimeStep, allValues);
                 }*/
+
+                #endregion
+
+                #region paraview output
+
+                //Pressure results
+                List<double> pSolution = RetrievePressureSolution(equationModel.ParentSolvers[0], equationModel.NLAnalyzers[0], equationModel.model[0], eq78Model.algebraicModel);
+                var pmodelNodes = equationModel.model[0].NodesDictionary;
+                var pmodelElements = equationModel.model[0].ElementsDictionary;
+
+                var patSelection1 = 1;
+                var outputPath1 = patSelection1 == 0 ? "../../../Coupling78_9_13_VanillaLinearSource/results//paraviewRes2/p" : $@"C:\Users\acivi\Documents\atuxaia\develop yperelastic withh BIO TEAM\MsolveOutput\vtk\p\p_solution_{currentTimeStep}.vtk";
+
+
+                //Plot pressure
+                //CellType cellType = pmodelElements.First().Value.CellType;
+                var writerParaview = new VtkFileWriter2(outputPath1, 3, CellType.Tet4);
+                writerParaview.WriteMesh(pmodelNodes, pmodelElements);
+                writerParaview.WriteScalarField($"pressure", pSolution);
+                writerParaview.Dispose();
+
+                //displacements results
+                List<double[]> uSolution = RetrieveStructuralSolution(equationModel.ParentSolvers[1], equationModel.NLAnalyzers[1], equationModel.model[1], eq9Model.algebraicModel);
+                var umodelNodes = equationModel.model[1].NodesDictionary;
+                var umodelElements = equationModel.model[1].ElementsDictionary;
+
+                var patSelection2 = 1;
+                var outputPath2 = patSelection2 == 0 ? "../../../Coupling78_9_13_VanillaLinearSource/results/paraviewRes2/u" : $@"C:\Users\acivi\Documents\atuxaia\develop yperelastic withh BIO TEAM\MsolveOutput\vtk\solid\u_solution_{currentTimeStep}.vtk";
+                //Plot displacements fields
+                var writerParaview2 = new VtkFileWriter2(outputPath2, 3, CellType.Tet4);
+                writerParaview2.WriteMesh(pmodelNodes, pmodelElements);
+                writerParaview2.WriteVectorField($"displacements", uSolution);
+                writerParaview2.Dispose();
+                //using (var writer3 = new StreamWriter(Paths.OutputForDisplacementsResults))
+                //{
+                //    writer3.Write(writerParaview2.ToString());
+                //}
+
+                //Pressure results
+                List<double> coxSolution = RetrievePressureSolution(equationModel.ParentSolvers[2], equationModel.NLAnalyzers[2], equationModel.model[2], coxModel.algebraicModel);
+                var coxModelNodes = equationModel.model[2].NodesDictionary;
+                var coxModelElements = equationModel.model[2].ElementsDictionary;
+
+                var patSelection3 = 1;
+                var outputPath3 = patSelection3 == 0 ? "../../../Coupling78_9_13_VanillaLinearSource/results//paraviewRes2/cox" : $@"C:\Users\acivi\Documents\atuxaia\develop yperelastic withh BIO TEAM\MsolveOutput\vtk\cox\cox_solution_{currentTimeStep}.vtk";
+                //Plot pressure
+                //CellType cellType = pmodelElements.First().Value.CellType;
+                var writerParaview3 = new VtkFileWriter2(outputPath3, 3, CellType.Tet4);
+                writerParaview3.WriteMesh(pmodelNodes, pmodelElements);
+                writerParaview3.WriteScalarField($"cox", pSolution);
+                writerParaview3.Dispose();
 
                 #endregion
 

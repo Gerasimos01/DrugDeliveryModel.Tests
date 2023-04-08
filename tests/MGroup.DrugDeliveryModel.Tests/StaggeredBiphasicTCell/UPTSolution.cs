@@ -474,8 +474,8 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             
             Assert.True(ResultChecker.CheckResults(solidVelocityResultsX, expectedSolidVelocityX(), 1e-3));
             Assert.True(ResultChecker.CheckResults(solidVelocityResultsY, expectedSolidVelocityY(), 1e-3));
-            Assert.True(ResultChecker.CheckResults(solidVelocityResultsZ, expectedSolidVelocityZ(), 1e-3));
-            
+            Assert.True(ResultChecker.CheckResults(solidVelocityResultsZ, expectedSolidVelocityZ(), 1e-3));//https://docs.google.com/spreadsheets/d/1MKcT-n7nv_pIlovpycyLsWfdSye_jIee/edit#gid=1599875715
+
             Assert.True(ResultChecker.CheckResults(p_i, expectedPressurevalues(), 1e-3));
             Assert.True(ResultChecker.CheckResults(gp_dut_dx_OverTime, expected_dutdx_values(), 1e-3));
             Assert.True(ResultChecker.CheckResults(gp_dvt_dy_OverTime, expected_dvtdy_values(), 1e-3));

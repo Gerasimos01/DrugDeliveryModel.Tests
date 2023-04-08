@@ -20,6 +20,7 @@ using MGroup.MSolve.Numerics.Integration;
 using MGroup.LinearAlgebra.Matrices;
 using MGroup.Constitutive.ConvectionDiffusion.BoundaryConditions;
 using MGroup.Constitutive.ConvectionDiffusion;
+using MGroup.Solvers.AlgebraicModel;
 
 namespace MGroup.DrugDeliveryModel.Tests.EquationModels
 {
@@ -62,7 +63,8 @@ namespace MGroup.DrugDeliveryModel.Tests.EquationModels
         private List<(BoundaryAndInitialConditionsUtility.BoundaryConditionCase, StructuralDof[], double[][], double[])> structuralNeumannBC;
         
         private ComsolMeshReader reader;
-       
+        public GlobalAlgebraicModel<SkylineMatrix> algebraicModel; 
+
         private Dictionary<int, double> lambda;
         
         Dictionary<int, double[][]> pressureTensorDivergenceAtElementGaussPoints;
@@ -153,7 +155,7 @@ namespace MGroup.DrugDeliveryModel.Tests.EquationModels
         public (IParentAnalyzer analyzer, ISolver solver, IChildAnalyzer loadcontrolAnalyzer) GetAppropriateSolverAnalyzerAndLog(Model model, double pseudoTimeStep, double pseudoTotalTime, int currentStep, int nIncrements)
         {
             var solverFactory = new SkylineSolver.Factory() { FactorizationPivotTolerance = 1e-8 };
-            var algebraicModel =  solverFactory.BuildAlgebraicModel(model);
+            algebraicModel = solverFactory.BuildAlgebraicModel(model);
             var solver = solverFactory.BuildSolver(algebraicModel);
             var provider = new ProblemStructural(model, algebraicModel);
             var loadControlAnalyzerBuilder = new LoadControlAnalyzer.Builder(algebraicModel, solver, provider, numIncrements: nIncrements)

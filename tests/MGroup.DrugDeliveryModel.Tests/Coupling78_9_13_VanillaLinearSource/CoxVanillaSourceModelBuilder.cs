@@ -22,6 +22,8 @@ using MGroup.Constitutive.ConvectionDiffusion.BoundaryConditions;
 using MGroup.Constitutive.ConvectionDiffusion.InitialConditions;
 using System.Security.AccessControl;
 using BC = MGroup.DrugDeliveryModel.Tests.Commons.BoundaryAndInitialConditionsUtility.BoundaryConditionCase;
+using MGroup.LinearAlgebra.Matrices;
+using MGroup.Solvers.AlgebraicModel;
 
 namespace MGroup.DrugDeliveryModel.Tests.Integration
 {
@@ -76,6 +78,8 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
 
 
         private readonly ComsolMeshReader mesh;
+
+        public GlobalAlgebraicModel<Matrix> algebraicModel;
 
         /// <summary>
         /// List containing the DIRICHLET boundary conditions for the Convection Diffusion problem.
@@ -321,7 +325,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
         public (IParentAnalyzer analyzer, ISolver solver, IChildAnalyzer loadcontrolAnalyzer) GetAppropriateSolverAnalyzerAndLog(Model model, double TimeStep, double TotalTime, int currentStep, int nIncrements)
         {
             var solverFactory = new DenseMatrixSolver.Factory() { IsMatrixPositiveDefinite = false };
-            var algebraicModel = solverFactory.BuildAlgebraicModel(model);
+            algebraicModel = solverFactory.BuildAlgebraicModel(model);
             var solver = solverFactory.BuildSolver(algebraicModel);
             var problem = new ProblemConvectionDiffusion(model, algebraicModel);
 

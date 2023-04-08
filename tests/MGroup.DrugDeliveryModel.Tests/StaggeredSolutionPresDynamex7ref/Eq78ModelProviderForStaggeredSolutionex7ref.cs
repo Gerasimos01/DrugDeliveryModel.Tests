@@ -21,6 +21,8 @@ using MGroup.MSolve.Solution;
 using MGroup.Constitutive.ConvectionDiffusion.BoundaryConditions;
 using MGroup.Constitutive.ConvectionDiffusion.InitialConditions;
 using System.Security.AccessControl;
+using MGroup.LinearAlgebra.Matrices;
+using MGroup.Solvers.AlgebraicModel;
 
 namespace MGroup.DrugDeliveryModel.Tests.Integration
 {
@@ -67,6 +69,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
         private ConvectionDiffusionDof dofTypeToMonitor;
 
         private ComsolMeshReader modelReader;
+        public GlobalAlgebraicModel<Matrix> algebraicModel;
 
         public Eq78ModelProviderForStaggeredSolutionex7ref(ComsolMeshReader modelReader,
             double k_th_tumor, double k_th_host, double Lp, double Sv, double pv, double LplSvl_tumor, double LplSvl_host,
@@ -150,7 +153,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
         {
             var solverFactory = new DenseMatrixSolver.Factory() { IsMatrixPositiveDefinite = false }; //Dense Matrix Solver solves with zero matrices!
             //var solverFactory = new SkylineSolver.Factory() { FactorizationPivotTolerance = 1e-8 };
-            var algebraicModel = solverFactory.BuildAlgebraicModel(model);
+            algebraicModel = solverFactory.BuildAlgebraicModel(model);
             var solver = solverFactory.BuildSolver(algebraicModel);
             var provider = new ProblemConvectionDiffusion(model, algebraicModel);
 

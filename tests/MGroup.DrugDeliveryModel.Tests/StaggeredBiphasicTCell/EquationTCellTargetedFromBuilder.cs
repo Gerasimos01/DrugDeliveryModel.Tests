@@ -68,7 +68,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
 
         //---------------------------------------Time Discretization Specs------------------------------
         //private const double TotalTime = 1E-2;
-        private const double TotalTime = 1E-2;
+        private const double TotalTime = 1E-3;
 
         /// <summary>
         /// For increased accuracy use time-step of order 1E-5
