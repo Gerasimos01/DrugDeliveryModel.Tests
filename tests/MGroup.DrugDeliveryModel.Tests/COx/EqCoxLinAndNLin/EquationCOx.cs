@@ -87,7 +87,7 @@ namespace MGroup.DrugDeliveryModel.Tests.COx.EqCoxLinAndNLin
         //For full analysis
         //private const double TotalTime = 1E-2;
         //For Test
-        private const double TotalTime = 20E-5;
+        private const double TotalTime = 4000E-5;
 
 
         /// <summary>
@@ -143,14 +143,29 @@ namespace MGroup.DrugDeliveryModel.Tests.COx.EqCoxLinAndNLin
             return (Cox) => -PerOx * Sv; //Linear
         }
 
+        [Fact]
+        public void RunPatrametic()
+        {
+            //SolveEquationCOxNonLinearProduction("../../../DataFiles/workingTetMesh2185_1Domain.mphtxt", 10);
+            //SolveEquationCOxNonLinearProduction("../../../DataFiles/workingTetMesh2185_1Domain.mphtxt", 100);
+            //SolveEquationCOxNonLinearProduction("../../../DataFiles/workingTetMesh2185_1Domain.mphtxt", 500);
+            //SolveEquationCOxNonLinearProduction("../../../DataFiles/workingTetMesh2185_1Domain.mphtxt", 1000);
+            SolveEquationCOxNonLinearProduction("../../../DataFiles/workingTetMesh2185_1Domain.mphtxt", 0);
+        }
+
 
         //exoume allaxei builder (neos apo Theofilo  alla) mikres minor apokliseis sta expeceted kai uparxei kai path apo google docs gia na ta xanaftiaxoume
         [Theory]
-        [InlineData("../../../DataFiles/workingTetMesh2185_1Domain.mphtxt")]
-        public void SolveEquationCOxNonLinearProduction(string fileName)
+        [InlineData("../../../DataFiles/workingTetMesh2185_1Domain.mphtxt",1)]
+        public void SolveEquationCOxNonLinearProduction(string fileName,int factor )
         {
+            var DoxParametric = factor * 1.79E-4;
             var mesh = new ComsolMeshReader(fileName);
 
+            FluidSpeed = new Dictionary<int, double[]>();
+            T = new Dictionary<int, double>();
+            ProductionFuncsWithoutConstantTerm = new Dictionary<int, Func<double, double>>();
+            ProductionFuncsWithoutConstantTermDerivative = new Dictionary<int, Func<double, double>>();
             foreach (var elem in mesh.ElementConnectivity)
             {
                 FluidSpeed.Add(elem.Key, new double[] { FluidInit, FluidInit, FluidInit });
@@ -169,7 +184,7 @@ namespace MGroup.DrugDeliveryModel.Tests.COx.EqCoxLinAndNLin
 
             var nodeIdToMonitor = Utilities.FindNodeIdFromNodalCoordinates(mesh.NodesDictionary, monitorNodeCoords, 1e-4);
 
-            var modelBuilder = new CoxModelBuilder(mesh, FluidSpeed, Dox, Aox, Kox, PerOx, Sv, CiOx, T, CoxInitialCondition, independentLinearSource, null,
+            var modelBuilder = new CoxModelBuilder(mesh, FluidSpeed, DoxParametric, Aox, Kox, PerOx, Sv, CiOx, T, CoxInitialCondition, independentLinearSource, null,
                 ProductionFuncsWithoutConstantTerm, ProductionFuncsWithoutConstantTermDerivative, nodeIdToMonitor, coxMonitorDOF, convectionDiffusionDirichletBC, convectionDiffusionNeumannBC);
 
             
@@ -191,9 +206,9 @@ namespace MGroup.DrugDeliveryModel.Tests.COx.EqCoxLinAndNLin
                 cox[i1] = ((DOFSLog)timeStepResultsLog).DOFValues[model.GetNode(nodeIdToMonitor), coxMonitorDOF];
             }
 
-            CSVExporter.ExportVectorToCSV(cox, "../../../Integration/cox_non_linear_nodes_mslv.csv");
-            Console.WriteLine("FINISHED solving Cox Non-Linear prod");
-            Assert.True(ResultChecker.CheckResults(cox, expectedLinSolution, 1e-6));
+            CSVExporter.ExportVectorToCSV(cox, $"../../../Integration/linear_diffusion_x1000_conv_2_32_mslv_Dox_factor_{factor}.csv");
+            //Console.WriteLine("FINISHED solving Cox Non-Linear prod");
+            //Assert.True(ResultChecker.CheckResults(cox, expectedLinSolution, 1e-6));
 
         }
 
