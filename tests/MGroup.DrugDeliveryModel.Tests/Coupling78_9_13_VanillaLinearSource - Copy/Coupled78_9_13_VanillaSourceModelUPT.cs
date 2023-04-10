@@ -120,9 +120,13 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             {//CALCULATE vf = kP + vs
                 FluidSpeed[elem.Key] = new double[3]
                 {
-                    (-(pressureTensorDivergenceAtElementGaussPoints[elem.Key][0][0] * kth) + ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][0]) * 1000,
-                    (-(pressureTensorDivergenceAtElementGaussPoints[elem.Key][0][1] * kth) + ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][1]) * 1000,
-                    (-(pressureTensorDivergenceAtElementGaussPoints[elem.Key][0][2] * kth) + ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][2]) * 1000,
+                    //(-(pressureTensorDivergenceAtElementGaussPoints[elem.Key][0][0] * kth) + ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][0]) * 1000,
+                    //(-(pressureTensorDivergenceAtElementGaussPoints[elem.Key][0][1] * kth) + ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][1]) * 1000,
+                    //(-(pressureTensorDivergenceAtElementGaussPoints[elem.Key][0][2] * kth) + ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][2]) * 1000,
+
+                    ( ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][0]) * 1000,
+                    ( ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][1]) * 1000,
+                    ( ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][2]) * 1000,
                 };
             }
             model = new Model[3];
@@ -140,7 +144,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             //Create model for eq13 (cox)
             model[2] = CoxModelProvider.GetModel();
             CoxModelProvider.AddBoundaryConditions(model[2]);
-            (analyzers[2], solvers[2], nlAnalyzers[2]) = CoxModelProvider.GetAppropriateSolverAnalyzerAndLog(model[2], timeStep, totalTime, CurrentTimeStep, incrementsPerStep);
+            (analyzers[2], solvers[2], nlAnalyzers[2]) = CoxModelProvider.GetAppropriateSolverAnalyzerAndLog(model[2], timeStep, totalTime, CurrentTimeStep);
 
             for (int i = 0; i < analyzers.Length; i++)
             {
@@ -173,11 +177,15 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
                 {//CALCULATE vf = kP + vs
                  //vs
                     FluidSpeed[elem.Key] = new double[3]
-                    {
-                         (-(pressureTensorDivergenceAtElementGaussPoints[elem.Key][0][0] * kth) + ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][0]) * 1000,
-                         (-(pressureTensorDivergenceAtElementGaussPoints[elem.Key][0][1] * kth) + ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][1]) * 1000,
-                         (-(pressureTensorDivergenceAtElementGaussPoints[elem.Key][0][2] * kth) + ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][2]) * 1000,
-                    };
+                {
+                    //(-(pressureTensorDivergenceAtElementGaussPoints[elem.Key][0][0] * kth) + ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][0]) * 1000,
+                    //(-(pressureTensorDivergenceAtElementGaussPoints[elem.Key][0][1] * kth) + ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][1]) * 1000,
+                    //(-(pressureTensorDivergenceAtElementGaussPoints[elem.Key][0][2] * kth) + ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][2]) * 1000,
+
+                    ( ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][0]) * 1000,
+                    ( ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][1]) * 1000,
+                    ( ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][2]) * 1000,
+                };
                 }
             }
 
@@ -201,7 +209,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             //Create model for eq8 (Cox)
             model[2] = CoxModelProvider.GetModel();
             CoxModelProvider.AddBoundaryConditions(model[2]);
-            (analyzers[2], solvers[2], nlAnalyzers[2]) = CoxModelProvider.GetAppropriateSolverAnalyzerAndLog(model[2], timeStep, totalTime, CurrentTimeStep, incrementsPerStep);
+            (analyzers[2], solvers[2], nlAnalyzers[2]) = CoxModelProvider.GetAppropriateSolverAnalyzerAndLog(model[2], timeStep, totalTime, CurrentTimeStep);
 
             for (int i = 0; i < analyzers.Length; i++)
             {

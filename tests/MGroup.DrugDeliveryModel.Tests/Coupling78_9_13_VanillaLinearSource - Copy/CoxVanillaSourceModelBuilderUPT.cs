@@ -348,28 +348,70 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             return (analyzer, solver, linearAnalyzer);
         }
 
+        //public (IParentAnalyzer analyzer, ISolver solver, IChildAnalyzer loadcontrolAnalyzer) GetAppropriateSolverAnalyzerAndLog
+        //(Model model, double pseudoTimeStep, double pseudoTotalTime, int currentStep)
+        //{
+        //    var solverFactory = new DenseMatrixSolver.Factory() { IsMatrixPositiveDefinite = false }; //Dense Matrix Solver solves with zero matrices!
+        //                                                                                              //var solverFactory = new SkylineSolver.Factory() { FactorizationPivotTolerance = 1e-8 };
+        //    var algebraicModel = solverFactory.BuildAlgebraicModel(model);
+        //    var solver = solverFactory.BuildSolver(algebraicModel);
+        //    var provider = new ProblemConvectionDiffusion(model, algebraicModel);
+
+
+        //    var linearAnalyzer = new LinearAnalyzer(algebraicModel, solver, provider);
+
+        //    var analyzerBuilder = new NewmarkDynamicAnalyzer.Builder(algebraicModel, provider, linearAnalyzer, timeStep: pseudoTimeStep, totalTime: pseudoTotalTime, false, currentStep: currentStep);
+        //    analyzerBuilder.SetNewmarkParametersForConstantAcceleration();
+        //    var analyzer = analyzerBuilder.Build();
+        //    var watchDofs = new[]
+        //    {
+        //            new List<(INode node, IDofType dof)>()
+        //            {
+        //                (model.NodesDictionary[nodeIdToMonitor], dofTypeToMonitor),
+        //            }
+        //        };
+        //    linearAnalyzer.LogFactory = new LinearAnalyzerLogFactory(watchDofs[0], algebraicModel);
+
+        //    return (analyzer, solver, linearAnalyzer);
+        //}
+
+
         public (IParentAnalyzer analyzer, ISolver solver, IChildAnalyzer loadcontrolAnalyzer) GetAppropriateSolverAnalyzerAndLog
         (Model model, double pseudoTimeStep, double pseudoTotalTime, int currentStep)
         {
             var solverFactory = new DenseMatrixSolver.Factory() { IsMatrixPositiveDefinite = false }; //Dense Matrix Solver solves with zero matrices!
                                                                                                       //var solverFactory = new SkylineSolver.Factory() { FactorizationPivotTolerance = 1e-8 };
-            var algebraicModel = solverFactory.BuildAlgebraicModel(model);
+            algebraicModel = solverFactory.BuildAlgebraicModel(model);
             var solver = solverFactory.BuildSolver(algebraicModel);
             var provider = new ProblemConvectionDiffusion(model, algebraicModel);
 
 
             var linearAnalyzer = new LinearAnalyzer(algebraicModel, solver, provider);
 
-            var analyzerBuilder = new NewmarkDynamicAnalyzer.Builder(algebraicModel, provider, linearAnalyzer, timeStep: pseudoTimeStep, totalTime: pseudoTotalTime, false, currentStep: currentStep);
+            //var loadControlAnalyzerBuilder = new LoadControlAnalyzer.Builder(algebraicModel, solver, provider, numIncrements: 1)
+            //{
+            //    ResidualTolerance = 1E-8,
+            //    MaxIterationsPerIncrement = 100,
+            //    NumIterationsForMatrixRebuild = 1
+            //};
+            //var loadControlAnalyzer = loadControlAnalyzerBuilder.Build();
+
+            //loadControlAnalyzer.TotalDisplacementsPerIterationLog = new TotalDisplacementsPerIterationLog(new List<(INode node, IDofType dof)>()
+            //    {(model.NodesDictionary[MonitorNodeId], MonitorDOFType)}, algebraicModel);
+
+            var analyzerBuilder = new NewmarkDynamicAnalyzer.Builder(algebraicModel, provider, linearAnalyzer, timeStep: pseudoTimeStep, totalTime: pseudoTotalTime, true, currentStep: currentStep);
             analyzerBuilder.SetNewmarkParametersForConstantAcceleration();
+
+            /*var analyzerBuilder = new BDFDynamicAnalyzer.Builder(algebraicModel, provider, linearAnalyzer,
+                timeStep: pseudoTimeStep, totalTime: pseudoTotalTime, 5, currentStep);*/
             var analyzer = analyzerBuilder.Build();
             var watchDofs = new[]
             {
-                    new List<(INode node, IDofType dof)>()
-                    {
-                        (model.NodesDictionary[nodeIdToMonitor], dofTypeToMonitor),
-                    }
-                };
+                new List<(INode node, IDofType dof)>()
+                {
+                    (model.NodesDictionary[nodeIdToMonitor], dofTypeToMonitor),
+                }
+            };
             linearAnalyzer.LogFactory = new LinearAnalyzerLogFactory(watchDofs[0], algebraicModel);
 
             return (analyzer, solver, linearAnalyzer);

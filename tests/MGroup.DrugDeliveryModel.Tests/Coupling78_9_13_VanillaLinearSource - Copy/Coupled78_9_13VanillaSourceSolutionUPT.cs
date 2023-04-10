@@ -27,6 +27,8 @@ using System.Reflection.PortableExecutable;
 using static Xunit.Assert;
 using MGroup.MSolve.Discretization;
 using static MGroup.DrugDeliveryModel.Tests.Commons.Utilities;
+using BC = MGroup.DrugDeliveryModel.Tests.Commons.BoundaryAndInitialConditionsUtility.BoundaryConditionCase;
+
 
 namespace MGroup.DrugDeliveryModel.Tests.Integration
 {
@@ -35,11 +37,14 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
         const double Sc = 0.1;
 
         private const double timeStep = 1E-5; // in sec
-        const double totalTime = 10E-5; // in sec
+        const double totalTime = 3E-5; // in sec
+        //const double totalTime = 0.0001 ; // in sec
         static int incrementsPertimeStep = 1;
         static int currentTimeStep = 0;
 
+
         #region Structural model properties
+
         static double density = 1;
         static double miNormal = 5; //KPa
         static double kappaNormal = 6.667; //Kpa
@@ -58,23 +63,20 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
 
         #endregion
 
-        //Array of doublle arrys that contain various node coordintates (in the same face)
-        private double[][] test = new double[2][] { new double[] { 1, 1, 1 }, new double[] { 1, 1, 1 } };
-
         #region Structural model BCs and Loads
 
-        private static List<(BoundaryAndInitialConditionsUtility.BoundaryConditionCase, StructuralDof[], double[][], double[])> structuralDirichletBC =
-            new List<(BoundaryAndInitialConditionsUtility.BoundaryConditionCase, StructuralDof[], double[][], double[])>()
+        private static List<(BC, StructuralDof[], double[][], double[])> structuralDirichletBC =
+            new List<(BC, StructuralDof[], double[][], double[])>()
                 {
-                    (BoundaryAndInitialConditionsUtility.BoundaryConditionCase.BottomDirichlet,
+                    (BC.BottomDirichlet,
                         new StructuralDof[1] { StructuralDof.TranslationZ }, new double[1][]{new double[3] {0,0,0}}, new double[] { 0.0 }),
-                    (BoundaryAndInitialConditionsUtility.BoundaryConditionCase.LeftDirichlet,
+                    (BC.LeftDirichlet,
                         new StructuralDof[1] { StructuralDof.TranslationX }, new double[1][]{new double[3] {0,0,0}}, new double[] { 0.0 }),
-                    (BoundaryAndInitialConditionsUtility.BoundaryConditionCase.RightDirichlet,
+                    (BC.RightDirichlet,
                         new StructuralDof[1] { StructuralDof.TranslationX }, new double[1][]{new double[3] {0.1,0,0}}, new double[] { 0.0 }),
-                    (BoundaryAndInitialConditionsUtility.BoundaryConditionCase.FrontDirichlet,
+                    (BC.FrontDirichlet,
                         new StructuralDof[1] { StructuralDof.TranslationY }, new double[1][]{new double[3] {0,0,0}}, new double[] { 0.0 }),
-                    (BoundaryAndInitialConditionsUtility.BoundaryConditionCase.BackDirichlet,
+                    (BC.BackDirichlet,
                         new StructuralDof[1] { StructuralDof.TranslationY }, new double[1][]{new double[3] {0,0.1,0}}, new double[] { 0.0 }),
 
                 };
@@ -84,51 +86,39 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
         static double[] coordsLoad3 = new double[3] { 0.0, 0.1, 0.1 };
         static double[] coordsLoad4 = new double[3] { 0.1, 0.1, 0.1 };
         static double[][] loadCoords = new double[4][] { coordsLoad1, coordsLoad2, coordsLoad3, coordsLoad4 };
-        static List<(BoundaryAndInitialConditionsUtility.BoundaryConditionCase, StructuralDof[], double[][], double[])> structuralNeumannBC =
-            new List<(BoundaryAndInitialConditionsUtility.BoundaryConditionCase, StructuralDof[], double[][], double[])>()
+        static List<(BC, StructuralDof[], double[][], double[])> structuralNeumannBC =
+            new List<(BC, StructuralDof[], double[][], double[])>()
             {
-                (BoundaryAndInitialConditionsUtility.BoundaryConditionCase.TopPointFlux, new StructuralDof[1]{StructuralDof.TranslationZ}, loadCoords, new double []{-1E-4 / 4d})
+                (BC.TopPointFlux, new StructuralDof[1]{StructuralDof.TranslationZ}, loadCoords, new double []{-1E-4 / 4d})
             };
 
         #endregion
 
-        #region Solid Displacement Logging
+        #region ToDo Orestis log task 1 
         /// <summary>
         /// Data 1:coords, 2:outputfileString, 3: logged Doftype, 4: found node Id, 5: results 
         /// </summary>
         static List<(double[], string, StructuralDof, int, double[])> nodeDisplacementLogs = new List<(double[], string, StructuralDof, int, double[])>()
-        {(new double[]{ 0.04930793848882013,0.04994681648346263,0.075 }, "CornerNodeTranslationZ.txt",StructuralDof.TranslationZ,-1, new double[0])};
+            {(new double[]{ 0.04930793848882013,0.04994681648346263,0.075 }, "CornerNodeTranslationZ.txt",StructuralDof.TranslationZ,-1, new double[0])};
 
-        static double[] structuralMonitorNodeCoords = new double[]
-            { 0.0, 0.0, 0.1 };
+        static double[] structuralMonitorNodeCoords = new double[] { 0.0, 0.0, 0.1 };
         private static int structuralMonitorID;
-        static StructuralDof eq9dofTypeToMonitor = StructuralDof.TranslationZ;
+        static StructuralDof structuralMonitorDOF = StructuralDof.TranslationZ;
+
         #endregion
 
-        #region Solid Velocity Logging
+        #region ToDo Orestis log task 2
         /// <summary>
         /// Data 1:coords, 2:outputfileString, 3: found element Id, 4: results 
         /// </summary>
         static List<(double[], string, int, double[][])> gpVelocityGraadientLogs = new List<(double[], string, int, double[][])>()
         {(new double[]{ 0.05301208792514899, 0.053825572057669926, 0.052065045951539365 }, "CenterNodeGradients",-1, new double[3][])};
 
-        //10 step  u - P coupling
-        //static double[] monitoredGPCoordsVelocity = new double[] { 0.09, 0.09, 0.09 };
-
-        //30 step - fluid velocity test
-        static double[] monitoredGPCoordsVelocity = new double[] { 0.08, 0.08, 0.08 };
-        #region All Logging Coordinates and ids
-
-        //Solid Displacement
-
-
-        //Solid velocity
-        static double[] solidVelocityGPCoords = new double[] {  0.08, 0.08, 0.08  };
-        static int solidVelocityGPId;
+        static double[] monitoredGPCoordsVelocity = new double[] { 0.09, 0.09, 0.09 };
+        static double[] monitoredGPCoordsDivVelocity = new double[] { 0.09, 0.09, 0.09 };
 
         #endregion
 
-        #endregion
         #region Darcy model
 
         //Darcy model properties
@@ -161,20 +151,20 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
 
         private static ConvectionDiffusionDof[] constrainedDofType = new ConvectionDiffusionDof[1] { ConvectionDiffusionDof.UnknownVariable };
         private static double[] boundaryValue = new double[1] { 0d };
-        private static List<(BoundaryAndInitialConditionsUtility.BoundaryConditionCase, ConvectionDiffusionDof[], double[][], double[])> pressureDirichletBC =
-            new List<(BoundaryAndInitialConditionsUtility.BoundaryConditionCase, ConvectionDiffusionDof[], double[][], double[])>()
+        private static List<(BC, ConvectionDiffusionDof[], double[][], double[])> pressureDirichletBC =
+            new List<(BC, ConvectionDiffusionDof[], double[][], double[])>()
             {
-                (BoundaryAndInitialConditionsUtility.BoundaryConditionCase.BottomDirichlet, constrainedDofType, new double[1][]{new double[3] {0,0,0}}, boundaryValue),
-                (BoundaryAndInitialConditionsUtility.BoundaryConditionCase.TopDirichlet, constrainedDofType, new double[1][]{new double[3] {0,0,0.1}}, boundaryValue),
-                (BoundaryAndInitialConditionsUtility.BoundaryConditionCase.LeftDirichlet, constrainedDofType, new double[1][]{new double[3] {0,0,0}}, boundaryValue),
-                (BoundaryAndInitialConditionsUtility.BoundaryConditionCase.RightDirichlet, constrainedDofType, new double[1][]{new double[3] {0.1,0,0}}, boundaryValue),
-                (BoundaryAndInitialConditionsUtility.BoundaryConditionCase.FrontDirichlet, constrainedDofType, new double[1][]{new double[3] {0,0,0}}, boundaryValue),
-                (BoundaryAndInitialConditionsUtility.BoundaryConditionCase.BackDirichlet, constrainedDofType, new double[1][]{new double[3] {0,0.1,0}}, boundaryValue),
+                (BC.BottomDirichlet, constrainedDofType, new double[1][]{new double[3] {0,0,0}}, boundaryValue),
+                (BC.TopDirichlet, constrainedDofType, new double[1][]{new double[3] {0,0,0.1}}, boundaryValue),
+                (BC.LeftDirichlet, constrainedDofType, new double[1][]{new double[3] {0,0,0}}, boundaryValue),
+                (BC.RightDirichlet, constrainedDofType, new double[1][]{new double[3] {0.1,0,0}}, boundaryValue),
+                (BC.FrontDirichlet, constrainedDofType, new double[1][]{new double[3] {0,0,0}}, boundaryValue),
+                (BC.BackDirichlet, constrainedDofType, new double[1][]{new double[3] {0,0.1,0}}, boundaryValue),
 
             };
 
-        private static List<(BoundaryAndInitialConditionsUtility.BoundaryConditionCase, ConvectionDiffusionDof[], double[][], double[])>
-            pressureNeumannBC = new List<(BoundaryAndInitialConditionsUtility.BoundaryConditionCase, ConvectionDiffusionDof[], double[][], double[])>();
+        private static List<(BC, ConvectionDiffusionDof[], double[][], double[])>
+            pressureNeumannBC = new List<(BC, ConvectionDiffusionDof[], double[][], double[])>();
 
         private static double boundaryValueAllBoundaries = 0;
         #endregion
@@ -189,38 +179,28 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
 
         #region Darcy logs
 
-        #region Fluid Pressure Logging 
+        #region ToDo Orestis log task 3 
         /// <summary>
         /// Data 1:coords, 2:outputfileString, 3: logged Doftype, 4: found node Id, 5: results 
         /// </summary>
         static List<(double[], string, StructuralDof, int, double[])> nodePressureLogs = new List<(double[], string, StructuralDof, int, double[])>()
         {(new double[]{ 0.04930793848882013,0.04994681648346263,0.075 }, "CornerNodeTranslationZ.txt",StructuralDof.TranslationZ,-1, new double[0])};
 
-        //10 step  u - P coupling
         static double[] pressureMonitorNodeCoords = new double[] { 0.055, 0.0559, 0.05 };
-
         private static int pressureMonitorID;
-
-        static ConvectionDiffusionDof eq7n8dofTypeToMonitor = ConvectionDiffusionDof.UnknownVariable;
+        static ConvectionDiffusionDof pressureMonitorDOF = ConvectionDiffusionDof.UnknownVariable;
 
         #endregion
 
-        #region Fluid Pressure Gradient & Velocity Logging
+        #region ToDo Orestis log task 4
         /// <summary>
         /// Data 1:coords, 2:outputfileString, 3: found element Id, 4: results 
         /// </summary>
         static List<(double[], string, int, double[][])> gpPressureGraadientLogs = new List<(double[], string, int, double[][])>()
         {(new double[]{ 0.05301208792514899, 0.053825572057669926, 0.052065045951539365 }, "CenterNodePressureGradients",-1, new double[3][])};
 
-        //10 step  u - P coupling
-        //static double[] monitoredGPcoordsPresGradient = new double[] { 0.055, 0.0559, 0.05 };
-
-        //30 step - fluid velocity test
-        static double[] monitoredGPcoordsPresGradient = new double[] { 0.05, 0.05, 0.05 };
-
-        //30 step - fluid velocity test
-        static double[] monitoredGPcoordsFluidVelocity = new double[] { 0.08, 0.08, 0.08 };
-        static int fluidVelocityMonitorID;
+        //static double[] monitoredGPcoordsPresGradient = new double[] { 0.004086132769345323, 0.006191771651571988, 0.09369050147682026 };
+        static double[] monitoredGPcoordsPresGradient = new double[] { 0.055, 0.0559, 0.05 };
 
         #endregion
         #endregion
@@ -232,11 +212,11 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
         private Dictionary<int, double[]> FluidSpeed = new Dictionary<int, double[]>(); // 2.32E-4 [m/s]
         const double FluidSpeedInit = 0;//2.32E-4;
 
-        static double SvCox = 7E3; // 1 / m
+        static double SvCox =  1.74E-6 * 0.2 / (8.3E-3 + 0.2); //7E3; // 1 / m
         /// <summary>
         /// Diffusivity of oxygen [m2/s]
         /// </summary>
-        private const double Dox = 1.79E-5; // [m2/s]
+        private const double Dox = 0; // [m2/s]
 
         /// <summary>
         /// Oxygen uptake [mol/(m3*s)]
@@ -251,14 +231,14 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
         /// <summary>
         /// Oxygen permeability across tumor vessel walls [m/s]
         /// </summary>
-        private const double PerOx = 3.55E-4; // [m/s]
+        private const double PerOx = -1; // [m/s]
 
         /// <summary>
         /// Initial Oxygen Concentration [mol/m3]
         /// </summary>
         private const double CInitOx = 0; // [mol/m3]
 
-        private const double Ciox =0.2; // [mol/m3]
+        private const double Ciox =0; // [mol/m3]
         /// <summary>
         /// Cancer cell density [1]
         /// </summary>
@@ -274,7 +254,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
         /// <summary>
         /// The coordinates of the monitored node
         /// </summary>
-        private double[] coxMonitorNodeCoords = { 0.09, 0.0, 0.05 };
+        private double[] coxMonitorNodeCoords = { 0.0, 0.0, 0.09 };
         private double[] vfMonitorGpCoords = { 0.09, 0.09, 0.09 };
         private static int coxMonitorID;
         private static int vfMonitorGpID;
@@ -290,9 +270,9 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
         #region CoxBCs
         List<(BoundaryAndInitialConditionsUtility.BoundaryConditionCase, ConvectionDiffusionDof[], double[][], double[])> convectionDiffusionDirichletBC = new List<(BoundaryAndInitialConditionsUtility.BoundaryConditionCase, ConvectionDiffusionDof[], double[][], double[])>()
             {
-                (BoundaryAndInitialConditionsUtility.BoundaryConditionCase.TopDirichlet, new ConvectionDiffusionDof[] { ConvectionDiffusionDof.UnknownVariable }, new double[1][]{new double[3] {0.1, 0.1, 0.1}}, new double[] {0.2}),
-                (BoundaryAndInitialConditionsUtility.BoundaryConditionCase.RightDirichlet,new ConvectionDiffusionDof[] { ConvectionDiffusionDof.UnknownVariable }, new double[1][]{new double[3] {0.1, 0.1, 0.1}}, new double[] {0.2d}),
-                (BoundaryAndInitialConditionsUtility.BoundaryConditionCase.BackDirichlet, new ConvectionDiffusionDof[] { ConvectionDiffusionDof.UnknownVariable }, new double[1][]{new double[3] {0.1, 0.1, 0.1}}, new double[] {0.2d}),
+                (BoundaryAndInitialConditionsUtility.BoundaryConditionCase.TopDirichlet, new ConvectionDiffusionDof[] { ConvectionDiffusionDof.UnknownVariable }, new double[1][]{new double[3] {0.1, 0.1, 0.1}}, new double[] {500}),
+                (BoundaryAndInitialConditionsUtility.BoundaryConditionCase.RightDirichlet,new ConvectionDiffusionDof[] { ConvectionDiffusionDof.UnknownVariable }, new double[1][]{new double[3] {0.1, 0.1, 0.1}}, new double[] {500}),
+                (BoundaryAndInitialConditionsUtility.BoundaryConditionCase.BackDirichlet, new ConvectionDiffusionDof[] { ConvectionDiffusionDof.UnknownVariable }, new double[1][]{new double[3] {0.1, 0.1, 0.1}}, new double[] {500}),
             };
         List<(BoundaryAndInitialConditionsUtility.BoundaryConditionCase, ConvectionDiffusionDof[], double[][], double[])> convectionDiffusionNeumannBC = new List<(BoundaryAndInitialConditionsUtility.BoundaryConditionCase, ConvectionDiffusionDof[], double[][], double[])>();
         #endregion
@@ -366,8 +346,8 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             pressureMonitorID = Utilities.FindNodeIdFromNodalCoordinates(comsolReader.NodesDictionary, pressureMonitorNodeCoords, 1e-2);
             //pressureMonitorID = structuralMonitorID;
             coxMonitorID = Utilities.FindNodeIdFromNodalCoordinates(comsolReader.NodesDictionary, coxMonitorNodeCoords, 1e-2);
-            fluidVelocityMonitorID = Utilities.FindNodeIdFromNodalCoordinates(comsolReader.NodesDictionary, monitoredGPcoordsFluidVelocity, 1e-2);
-            solidVelocityGPId = Utilities.FindNodeIdFromNodalCoordinates(comsolReader.NodesDictionary, solidVelocityGPCoords, 1e-2);
+            //fluidVelocityMonitorID = Utilities.FindNodeIdFromNodalCoordinates(comsolReader.NodesDictionary, monitoredGPcoordsFluidVelocity, 1e-2);
+            //solidVelocityGPId = Utilities.FindNodeIdFromNodalCoordinates(comsolReader.NodesDictionary, solidVelocityGPCoords, 1e-2);
             var p_i = new double[(int)(totalTime / timeStep)];
 
             double[] structuralResultsX = new double[(int)(totalTime / timeStep)];
@@ -417,6 +397,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
 
             double[] coxResults = new double[(int)(totalTime / timeStep)];
 
+            int monitoredGPDivVelocity_elemID = -1;
             int monitoredGPVelocity_elemID = -1; // TODO Orestis this will be deleeted if new logs are implemented in a right way.
             int monitoredGPpressureGrad_elemID = -1; // TODO Orestis this will be deleeted if new logs are implemented in a right way.
 
@@ -426,12 +407,12 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
 
             //Create Model For Pressure
             var eq78Model = new Eq78ModelProviderForStaggeredSolutionex7ref(comsolReader, k_th_tumor, k_th_host, Lp, Sv, pv,
-                LplSvl_tumor, LplSvl_host, pl, velocityDivergenceAtElementGaussPoints, pressureMonitorID, eq7n8dofTypeToMonitor, pressureDirichletBC, pressureNeumannBC);
+                LplSvl_tumor, LplSvl_host, pl, velocityDivergenceAtElementGaussPoints, pressureMonitorID, pressureMonitorDOF, pressureDirichletBC, pressureNeumannBC);
 
             //Create Model For Structural
             var eq9Model = new Eq9ModelProviderForStaggeredSolutionEx7Ref(comsolReader, Sc, miNormal, kappaNormal, miTumor,
                 kappaTumor, density, timeStep, totalTime, lambda, pressureTensorDivergenceAtElementGaussPoints,
-                structuralMonitorID, eq9dofTypeToMonitor, structuralNeumannBC, structuralDirichletBC);
+                structuralMonitorID, structuralMonitorDOF, structuralNeumannBC, structuralDirichletBC);
 
             //Create Model For Oxygen
             var coxModel = new CoxVanillaSourceModelBuilderUPT(comsolReader, FluidSpeed, independentLinearSource, dependentLinearSource, Dox, Aox, Kox, PerOx, SvCox, CInitOx,
@@ -454,39 +435,45 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
                 #region logging
 
                 //TODO Orestis: implement here one for loop for each "node Type" requested  log using the following commands
-                monitoredGPVelocity_elemID = Utilities.FindElementIdFromGaussPointCoordinates(equationModel.model[0], monitoredGPcoordsFluidVelocity, 1e-1); //Todo Orestis delete these commands1
+                //monitoredGPVelocity_elemID = Utilities.FindElementIdFromGaussPointCoordinates(equationModel.model[0], monitoredGPcoordsFluidVelocity, 1e-1); //Todo Orestis delete these commands1
                 monitoredGPpressureGrad_elemID = Utilities.FindElementIdFromGaussPointCoordinates(equationModel.model[0], monitoredGPcoordsPresGradient, 1e-1);
                 vfMonitorGpID = Utilities.FindElementIdFromGaussPointCoordinates(equationModel.model[2], vfMonitorGpCoords, 1e-1);
+                monitoredGPDivVelocity_elemID = Utilities.FindElementIdFromGaussPointCoordinates(equationModel.model[0], monitoredGPCoordsDivVelocity, 1e-1); //Todo Orestis delete these commands1
+                monitoredGPVelocity_elemID = Utilities.FindElementIdFromGaussPointCoordinates(equationModel.model[0], monitoredGPCoordsVelocity, 1e-1); //Todo Orestis delete these commands1
 
                 //nodal logs
-                p_i[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[0].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[0].GetNode(pressureMonitorID), eq7n8dofTypeToMonitor];
+                p_i[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[0].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[0].GetNode(pressureMonitorID), pressureMonitorDOF];
                 //p_i[currentTimeStep] = 0d;
                 //structuralResultsX[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[1].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[1].GetNode(structuralMonitorID), StructuralDof.TranslationX];
                 //structuralResultsY[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[1].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[1].GetNode(structuralMonitorID), StructuralDof.TranslationY];
                 //structuralResultsZ[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[1].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[1].GetNode(structuralMonitorID), StructuralDof.TranslationZ];
                 structuralResultsX[currentTimeStep] = 0d;
                 structuralResultsY[currentTimeStep] = 0d;
-                structuralResultsZ[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[1].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[1].GetNode(structuralMonitorID), eq9dofTypeToMonitor];
+                structuralResultsZ[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[1].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[1].GetNode(structuralMonitorID), structuralMonitorDOF];
 
                 //gp (element) logs
                 gp_dP_dx_OverTime[currentTimeStep] = ((ConvectionDiffusionElement3D)equationModel.model[0].ElementsDictionary[monitoredGPpressureGrad_elemID]).xcoeff_OverTimeAtGp1[0];
                 gp_dP_dy_OverTime[currentTimeStep] = ((ConvectionDiffusionElement3D)equationModel.model[0].ElementsDictionary[monitoredGPpressureGrad_elemID]).ycoeff_OverTimeAtGp1[0];
                 gp_dP_dz_Overtime[currentTimeStep] = ((ConvectionDiffusionElement3D)equationModel.model[0].ElementsDictionary[monitoredGPpressureGrad_elemID]).zcoeff_OverTimeAtGp1[0];
-                gp_dut_dx_OverTime[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[solidVelocityGPId]).velocityDivergence_term1[0];
-                gp_dvt_dy_OverTime[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[solidVelocityGPId]).velocityDivergence_term2[0];
-                gp_dwt_dz_OverTime[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[solidVelocityGPId]).velocityDivergence_term3[0];
-                gp_div_v_OverTime[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[solidVelocityGPId]).velocityDivergence[0];
+                //gp_dut_dx_OverTime[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[solidVelocityGPId]).velocityDivergence_term1[0];
+                //gp_dvt_dy_OverTime[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[solidVelocityGPId]).velocityDivergence_term2[0];
+                //gp_dwt_dz_OverTime[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[solidVelocityGPId]).velocityDivergence_term3[0];
+                gp_dut_dx_OverTime[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[monitoredGPDivVelocity_elemID]).velocityDivergence_term1[0];
+                gp_dvt_dy_OverTime[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[monitoredGPDivVelocity_elemID]).velocityDivergence_term2[0];
+                gp_dwt_dz_OverTime[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[monitoredGPDivVelocity_elemID]).velocityDivergence_term3[0];
 
-                var fluidVelocityX = coxModel.FluidSpeed[monitoredGPVelocity_elemID][0];
-                var fluidVelocityY = coxModel.FluidSpeed[monitoredGPVelocity_elemID][1];
-                var fluidVelocityZ = coxModel.FluidSpeed[monitoredGPVelocity_elemID][2];
-                uFluid_t[currentTimeStep] = fluidVelocityX;
-                vFluid_t[currentTimeStep] = fluidVelocityY;
-                wFluid_t[currentTimeStep] = fluidVelocityZ;
+                gp_div_v_OverTime[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[monitoredGPDivVelocity_elemID]).velocityDivergence[0];
 
-                solidVelocityResultsX[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[solidVelocityGPId]).velocity[0][0];
-                solidVelocityResultsY[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[solidVelocityGPId]).velocity[0][1];
-                solidVelocityResultsZ[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[solidVelocityGPId]).velocity[0][2];
+                //var fluidVelocityX = coxModel.FluidSpeed[monitoredGPVelocity_elemID][0];
+                //var fluidVelocityY = coxModel.FluidSpeed[monitoredGPVelocity_elemID][1];
+                //var fluidVelocityZ = coxModel.FluidSpeed[monitoredGPVelocity_elemID][2];
+                //uFluid_t[currentTimeStep] = fluidVelocityX;
+                //vFluid_t[currentTimeStep] = fluidVelocityY;
+                //wFluid_t[currentTimeStep] = fluidVelocityZ;
+
+                solidVelocityResultsX[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[monitoredGPVelocity_elemID]).velocity[0][0];
+                solidVelocityResultsY[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[monitoredGPVelocity_elemID]).velocity[0][1];
+                solidVelocityResultsZ[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[monitoredGPVelocity_elemID]).velocity[0][2];
 
 
                 coxResults[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[2].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[2].GetNode(coxMonitorID), coxMonitorDOF];
