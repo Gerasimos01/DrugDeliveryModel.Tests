@@ -123,7 +123,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
 
 
         //Solid velocity
-        static double[] solidVelocityGPCoords = new double[] {  0.08, 0.08, 0.08  };
+        static double[] solidVelocityGPCoords = new double[] { 0.08, 0.08, 0.08 };
         static int solidVelocityGPId;
 
         #endregion
@@ -258,7 +258,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
         /// </summary>
         private const double CInitOx = 0; // [mol/m3]
 
-        private const double Ciox =0.2; // [mol/m3]
+        private const double Ciox = 0.2; // [mol/m3]
         /// <summary>
         /// Cancer cell density [1]
         /// </summary>
@@ -306,7 +306,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
         [Fact]
         public void RunParametricForDiffusion()
         {
-            MonophasicEquationModel("../../../DataFiles/workingTetMesh2185_1Domain.mphtxt", 500);
+            MonophasicEquationModel("../../../DataFiles/workingTetMesh2185_1Domain.mphtxt", 1000);
         }
 
         [Theory]
@@ -318,7 +318,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
         //[InlineData("../../../DataFiles/workingTetMesh648_1Domain.mphtxt")]
         //[InlineData("../../../DataFiles/workingQuadMesh64_1Domain.mphtxt")]
         //[InlineData("../../../DataFiles/workingQHexaMesh6x6x6_1Domain.mphtxt")]
-        [InlineData("../../../DataFiles/workingTetMesh2185_1Domain.mphtxt", 1)]
+        [InlineData("../../../DataFiles/workingTetMesh2185_1Domain.mphtxt", 1000)]
         //[InlineData("../../../DataFiles/workingQuadMesh27_1Domain.mphtxt")]
         //[InlineData("../../../DataFiles/workingTetMesh155.mphtxt")]
         public void MonophasicEquationModel(string fileName, double diffusionFactor)
@@ -443,7 +443,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
 
             //Create Model For Oxygen
             var coxModel = new CoxVanillaSourceModelBuilder(comsolReader, FluidSpeed, independentLinearSource, dependentLinearSource, doxParametric, Aox, Kox, PerOx, SvCox, CInitOx,
-                                             
+
                                             coxMonitorID, coxMonitorDOF, convectionDiffusionDirichletBC, convectionDiffusionNeumannBC);
 
             //COMMITED BY NACHO 
@@ -603,6 +603,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             Assert.True(ResultChecker.CheckResults(gp_dP_dy_OverTime, expected_dpdy_values(), 1e-3));
             Assert.True(ResultChecker.CheckResults(gp_dP_dz_Overtime, expected_dpdz_values(), 1e-3));
             Assert.True(ResultChecker.CheckResults(p_i, expectedPressurevalues(), 1e-3));
+            Assert.True(ResultChecker.CheckResults(coxResults, expectedCoxForDiffusion1000X(), 1e-3)); // and of course staggerd solvers norms -1 
 
 
             Assert.True(ResultChecker.CheckResults(solidVelocityResultsX, expectedSolidVelocityX(), 1e-3));
@@ -613,7 +614,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             Assert.True(ResultChecker.CheckResults(gp_dvt_dy_OverTime, expected_dvtdy_values(), 1e-3));
             Assert.True(ResultChecker.CheckResults(gp_dwt_dz_OverTime, expected_dwtdz_values(), 1e-3));
             Assert.True(ResultChecker.CheckResults(gp_div_v_OverTime, expected_div_vs_values(), 1e-1));
-            
+
             //Assert.True(ResultChecker.CheckResults(coxResults, expectedCox(), 1E-1));
 
 
@@ -849,6 +850,21 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             };
         }
 
+        public static double[] expectedCoxForDiffusion1000X()
+        {
+            return new double[] {
+                -1.37061760E-04,
+                -4.03383068E-04,
+                -6.54392610E-04,
+                -8.90660001E-04,
+                -1.11272957E-03,
+                -1.32112305E-03,
+                -1.51634383E-03,
+                -1.69887738E-03,
+                -1.86919079E-03,
+                -2.02773436E-03
+            };
+        }
         //MSOLVE reference values for Fz = {- 1e-4 / 4}
         //GP : 0.09, 0.09, 0.09
         public static double[] expected_dutdx_values()
