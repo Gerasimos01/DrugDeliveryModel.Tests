@@ -303,6 +303,12 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             IsoparametricJacobian3D.DeterminantTolerance = 1e-20;
         }
 
+        [Fact]
+        public void RunParametricForDiffusion()
+        {
+            MonophasicEquationModel("../../../DataFiles/workingTetMesh2185_1Domain.mphtxt", 500);
+        }
+
         [Theory]
         //[InlineData("../../../DataFiles/workingTetMesh4886.mphtxt")]
         //[InlineData("../../../DataFiles/chipMelter2M.mphtxt")]
@@ -312,11 +318,12 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
         //[InlineData("../../../DataFiles/workingTetMesh648_1Domain.mphtxt")]
         //[InlineData("../../../DataFiles/workingQuadMesh64_1Domain.mphtxt")]
         //[InlineData("../../../DataFiles/workingQHexaMesh6x6x6_1Domain.mphtxt")]
-        [InlineData("../../../DataFiles/workingTetMesh2185_1Domain.mphtxt")]
+        [InlineData("../../../DataFiles/workingTetMesh2185_1Domain.mphtxt", 1)]
         //[InlineData("../../../DataFiles/workingQuadMesh27_1Domain.mphtxt")]
         //[InlineData("../../../DataFiles/workingTetMesh155.mphtxt")]
-        public void MonophasicEquationModel(string fileName)
+        public void MonophasicEquationModel(string fileName, double diffusionFactor)
         {
+            var doxParametric = diffusionFactor * Dox;
             ContinuumElement3DGrowth.dT = timeStep;
 
             //Read geometry
@@ -435,7 +442,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
                 structuralMonitorID, eq9dofTypeToMonitor, structuralNeumannBC, structuralDirichletBC);
 
             //Create Model For Oxygen
-            var coxModel = new CoxVanillaSourceModelBuilder(comsolReader, FluidSpeed, independentLinearSource, dependentLinearSource, Dox, Aox, Kox, PerOx, SvCox, CInitOx,
+            var coxModel = new CoxVanillaSourceModelBuilder(comsolReader, FluidSpeed, independentLinearSource, dependentLinearSource, doxParametric, Aox, Kox, PerOx, SvCox, CInitOx,
                                              
                                             coxMonitorID, coxMonitorDOF, convectionDiffusionDirichletBC, convectionDiffusionNeumannBC);
 
@@ -547,21 +554,21 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
                     ////}
 
 
-                    //cox results
-                    var coxmodelNodes = equationModel.model[2].NodesDictionary;
-                    var coxmodelElements = equationModel.model[2].ElementsDictionary;
-                    List<double> coxSolution = RetrievePressureSolution(equationModel.ParentSolvers[2], equationModel.NLAnalyzers[2], equationModel.model[2], coxModel.algebraicModel);
-                    var coxModelNodes = equationModel.model[2].NodesDictionary;
-                    var coxModelElements = equationModel.model[2].ElementsDictionary;
+                    ////cox results
+                    //var coxmodelNodes = equationModel.model[2].NodesDictionary;
+                    //var coxmodelElements = equationModel.model[2].ElementsDictionary;
+                    //List<double> coxSolution = RetrievePressureSolution(equationModel.ParentSolvers[2], equationModel.NLAnalyzers[2], equationModel.model[2], coxModel.algebraicModel);
+                    //var coxModelNodes = equationModel.model[2].NodesDictionary;
+                    //var coxModelElements = equationModel.model[2].ElementsDictionary;
 
-                    var patSelection3 = 1;
-                    var outputPath3 = patSelection3 == 0 ? "../../../Coupling78_9_13_VanillaLinearSource/results//paraviewRes2/cox" : $@"C:\Users\acivi\Documents\atuxaia\develop yperelastic withh BIO TEAM\MsolveOutput\vtk\cox\cox_solution_{paraviewcounter}.vtk";
-                    //Plot pressure
-                    //CellType cellType = pmodelElements.First().Value.CellType;
-                    var writerParaview3 = new VtkFileWriter2(outputPath3, 3, CellType.Tet4);
-                    writerParaview3.WriteMesh(coxmodelNodes, coxmodelElements);
-                    writerParaview3.WriteScalarField($"cox", coxSolution);
-                    writerParaview3.Dispose();
+                    //var patSelection3 = 1;
+                    //var outputPath3 = patSelection3 == 0 ? "../../../Coupling78_9_13_VanillaLinearSource/results//paraviewRes2/cox" : $@"C:\Users\acivi\Documents\atuxaia\develop yperelastic withh BIO TEAM\MsolveOutput\vtk\cox\cox_solution_{paraviewcounter}.vtk";
+                    ////Plot pressure
+                    ////CellType cellType = pmodelElements.First().Value.CellType;
+                    //var writerParaview3 = new VtkFileWriter2(outputPath3, 3, CellType.Tet4);
+                    //writerParaview3.WriteMesh(coxmodelNodes, coxmodelElements);
+                    //writerParaview3.WriteScalarField($"cox", coxSolution);
+                    //writerParaview3.Dispose();
                     paraviewcounter++;
                 }
 
