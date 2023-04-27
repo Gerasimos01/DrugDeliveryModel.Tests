@@ -37,8 +37,56 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             IsoparametricJacobian3D.DeterminantTolerance = 1e-20;
         }
 
-
         [Theory]
+        [InlineData("../../../DataFiles/workingTetMesh155.mphtxt", 1, 1, 6.94e-6, 0.0083)]
+        public void TestDistributedOdeApproach(string fileName, double coxCommmonValue, double TcommonValue, double k1, double k2)
+        {
+            double timeStep = 1;
+            double totalTime = 10;
+            ConvectionDiffusionDof lamdaMonitorDOF = ConvectionDiffusionDof.UnknownVariable;
+            int nodeIdToMonitor = 0;
+
+            Dictionary<int, double> T = new Dictionary<int, double>();// 500 [cells]
+            Dictionary<int, double> cox = new Dictionary<int, double>();// 500 [cells]
+            //Read geometry
+            var comsolReader = new ComsolMeshReader(fileName);
+
+            // initialize Shared quantities of Coupled model
+            Dictionary<int, double> lambda = new Dictionary<int, double>(comsolReader.ElementConnectivity.Count());
+            foreach (var elem in comsolReader.ElementConnectivity)
+            {
+                T.Add(elem.Key, TcommonValue);
+                cox.Add(elem.Key, coxCommmonValue);
+            }
+
+            var modelBuilder = new DistributedOdeModelBuilder(comsolReader, k1, k2, cox, T, 1d,lamdaMonitorDOF,nodeIdToMonitor);
+
+            var model = modelBuilder.GetModel();
+
+            //Add the spatially distributed velocity field
+
+
+
+
+            modelBuilder.AddBoundaryConditions(model);
+            (var analyzer, var solver, var nlAnalyzers) =
+                modelBuilder.GetAppropriateSolverAnalyzerAndLog(model, timeStep, totalTime, 0,1);
+            modelBuilder.AddInitialConditionsForTheRestOfBulkNodes(model);
+            ((NewmarkDynamicAnalyzer)analyzer).ResultStorage = new ImplicitIntegrationAnalyzerLog();
+
+            analyzer.Initialize(true);
+            analyzer.Solve();
+
+            int totalNewmarkstepsNum = (int)Math.Truncate(totalTime / timeStep);
+            var tCells = new double[totalNewmarkstepsNum];
+            for (int i1 = 0; i1 < totalNewmarkstepsNum; i1++)
+            {
+                var timeStepResultsLog = ((NewmarkDynamicAnalyzer)analyzer).ResultStorage.Logs[i1];
+                tCells[i1] = ((DOFSLog)timeStepResultsLog).DOFValues[model.GetNode(nodeIdToMonitor), lamdaMonitorDOF];
+            }
+        }
+
+            [Theory]
         [InlineData("../../../DataFiles/workingTetMesh155.mphtxt", 1, 1, 6.94e-6, 0.0083)]
         public void SolveEquation1(string fileName, double cox, double T, double k1, double k2)
         {

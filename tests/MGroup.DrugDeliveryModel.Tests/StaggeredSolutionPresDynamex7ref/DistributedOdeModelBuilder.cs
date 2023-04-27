@@ -23,166 +23,208 @@ using MGroup.Constitutive.ConvectionDiffusion.InitialConditions;
 using System.Security.AccessControl;
 using MGroup.LinearAlgebra.Matrices;
 using MGroup.Solvers.AlgebraicModel;
+using MGroup.FEM.ConvectionDiffusion.Isoparametric;
+using System.Reflection.PortableExecutable;
+using MGroup.MSolve.Discretization;
+using MGroup.MSolve.Numerics.Integration.Quadratures;
+using MGroup.MSolve.Numerics.Interpolation;
+using System.Xml.Linq;
 
 namespace MGroup.DrugDeliveryModel.Tests.Integration
 {
     public class DistributedOdeModelBuilder
     {
-        private double Sv;
-        private double k_th_tumor;
-        private double k_th_host;
-        private double pv;
-        private double pl;
-        private double Lp;
-        private double LplSvl_tumor;
-        private double LplSvl_host;
+        private double K1 { get; }
+        private double K2 { get; }
 
-        /// <summary>
-        /// List containing the DIRICHLET boundary conditions for the Convection Diffusion problem.
-        /// Item1 : Boundary condition case with respect to the face of the domain (LeftDirichlet, TopDirichlet etc).
-        /// Item2 : An StructuralDof array containing the DOFs that are constrained.
-        /// Item3 : A jagged array of arrays that contain all the coordinate sets of the bounded dofs. The lenght of
-        ///         array is equal to the number of constrained dofs. Each array contains the coordinates of the constrained
-        ///         dofs.
-        /// Item3 : A double array containing the values of the constrained dofs (1-1 correspondence with the dofs in Item2).
-        /// </summary>
-        private List<(BoundaryAndInitialConditionsUtility.BoundaryConditionCase, ConvectionDiffusionDof[], double[][], double[])> convectionDiffusionDirichletBC;
-        
-        /// <summary>
-        /// List containing the NEUMANN boundary conditions for the Convection Diffusion problem.
-        /// Item1 : Boundary condition case with respect to the face of the domain (RightPointFlux, TopDistributedFlux etc)
-        /// Item2 : An StructuralDof array containing the information about the direction of the dofs where the force is
-        ///         applied.
-        /// Item3 : A jagged array of arrays that contain all the coordinate sets of the bounded dofs. The lenght of
-        ///         array is equal to the number of constrained dofs. Each array contains the coordinates of the constrained
-        ///         dofs
-        /// Item3 : A double array containing the values of the constrained dofs (1-1 correspondence with the dofs in Item2)
-        /// </summary>
-        private List<(BoundaryAndInitialConditionsUtility.BoundaryConditionCase, ConvectionDiffusionDof[], double[][], double[])> convectionDiffusionNeumannBC;
-        
-        private double initialCondition;
-        
-        public Dictionary<int, double[]> div_vs { get; set; }
-        
-        private int nodeIdToMonitor; //TODO put it where it belongs (coupled7and9eqsSolution.cs)
-        
-        private ConvectionDiffusionDof dofTypeToMonitor;
+        private double InitialCondition { get; }
+
+        private Dictionary<int, double> DomainCOx { get; }
+
+        private readonly Dictionary<int, double> domainT; // [cells]
 
         private ComsolMeshReader modelReader;
         public GlobalAlgebraicModel<Matrix> algebraicModel;
 
-        public DistributedOdeModelBuilder(ComsolMeshReader modelReader,
-            double k_th_tumor, double k_th_host, double Lp, double Sv, double pv, double LplSvl_tumor, double LplSvl_host,
-            double pl, Dictionary<int, double[]> div_vs,
-            int nodeIdToMonitor, ConvectionDiffusionDof dofTypeToMonitor,
-            List<(BoundaryAndInitialConditionsUtility.BoundaryConditionCase, ConvectionDiffusionDof[], double[][], double[])> convectionDiffusionDirichletBC,
-            List<(BoundaryAndInitialConditionsUtility.BoundaryConditionCase, ConvectionDiffusionDof[], double[][], double[])> convectionDiffusionNeumannBC )
+        public Dictionary<int, INode> DummyNodesDictionary { get; } = new Dictionary<int, INode>();
+        public Dictionary<int, Tuple<CellType, Node[], int>> ElementDummyNodesConnectivity { get; set; }
+
+        private ConvectionDiffusionDof MonitorDOFType { get; }
+        private int MonitorNodeId { get; }
+
+        public DistributedOdeModelBuilder(ComsolMeshReader modelReader, double k1, double k2, Dictionary<int, double> domainCOx, Dictionary<int, double> T, double initialCondition,
+            ConvectionDiffusionDof monitorDOFType, int monitorNodeId)
         {
-            this.Sv = Sv;
-            this.k_th_tumor = k_th_tumor;
-            this.k_th_host = k_th_host;
-            this.pv = pv;
-            this.pl = pl;
-            this.Lp = Lp;
-            this.LplSvl_host = LplSvl_host;
-            this.LplSvl_tumor = LplSvl_tumor;
-            this.div_vs = div_vs;
+            this.MonitorDOFType = monitorDOFType;
+            this.MonitorNodeId = monitorNodeId;
+
+            K1 = k1;
+            K2 = k2;
+            DomainCOx = domainCOx;
+            this.domainT = T;
+            this.InitialCondition = initialCondition;
 
             this.modelReader = modelReader;
             IsoparametricJacobian3D.DeterminantTolerance = 1e-30;
-            
-            this.convectionDiffusionDirichletBC = convectionDiffusionDirichletBC;
-            this.convectionDiffusionNeumannBC = convectionDiffusionNeumannBC;
-            
-            this.initialCondition = initialCondition;
 
-            //log
-            this.nodeIdToMonitor = nodeIdToMonitor;
-            this.dofTypeToMonitor = dofTypeToMonitor;
-            
+
+            ElementDummyNodesConnectivity = new Dictionary<int, Tuple<CellType, Node[], int>>();
+
+            int dummyNodeId = 0;    
+            foreach (var elementConnectivity in modelReader.ElementConnectivity)
+            {
+                if(elementConnectivity.Value.Item1== CellType.Tet4)
+                {
+                    var interpolation = InterpolationTet4.UniqueInstance;
+                    var quadrature = TetrahedronQuadrature.Order1Point1;
+
+                    var numOfNecessaryDymmies = quadrature.IntegrationPoints.Count();
+                    var elemDummyNodes = new Node[numOfNecessaryDymmies];
+                    for (int i1 = 0; i1 < numOfNecessaryDymmies; i1++)
+                    {
+                        var node = new Node(id: dummyNodeId, x: 0, y: 0, z: 0);
+                        elemDummyNodes[i1] = node;
+                        DummyNodesDictionary.Add(key: dummyNodeId, node);
+                       dummyNodeId++;
+                    }
+
+                    ElementDummyNodesConnectivity.Add(key: elementConnectivity.Key, value: new Tuple<CellType, Node[], int>(CellType.Tet4, elemDummyNodes, elementConnectivity.Value.Item3));
+                }
+                else
+                {
+                    throw new NotImplementedException();
+                }
+
+            }
+
         }
 
         public Model GetModel()
         {
-            double capacity = 0;
-            double convectionCoeff = 0;
-            //double diffusion = k_th;
-            
+            var model = new Model();
+            model.SubdomainsDictionary[0] = new Subdomain(id: 0);
 
-            Dictionary<int, double> diffusionCoeffs = new Dictionary<int, double>();
-            Dictionary<int, double[]>ConvectionCoeffs = new Dictionary<int, double[]>(); //=> new[]  {1d, 1d, 1d};               
-            Dictionary<int, double> DependentProductionCoeffs = new Dictionary<int, double>();
-            Dictionary<int, double> IndependentProductionCoeffs = new Dictionary<int, double>();
-            foreach (var elementConnectivity in modelReader.ElementConnectivity)
+
+            foreach (var node in DummyNodesDictionary.Values)
             {
-                var domainId = elementConnectivity.Value.Item3;
-
-                double LplSvl = domainId == 0 ? LplSvl_tumor : LplSvl_host;
-
-                double dependentProductionCoeff = -(Lp * Sv + LplSvl);
-
-                ConvectionCoeffs[elementConnectivity.Key] = new double[]
-                    { convectionCoeff, convectionCoeff, convectionCoeff };
-                DependentProductionCoeffs[elementConnectivity.Key] = dependentProductionCoeff;
-                
-                var nodes = elementConnectivity.Value.Item2;
-
-                diffusionCoeffs[elementConnectivity.Key] = domainId == 0 ? k_th_tumor : k_th_host;
-
-                //var independentSource = Lp * Sv * pv  - div_vs[elementConnectivity.Key][0]; 
-                //var independentSource = Lp * Sv * pv; 
-                var independentSource = Lp * Sv * pv + LplSvl * pl - div_vs[elementConnectivity.Key][0]; //TODO [0] is the first gauss point Make it more genreal for all guss paints
-                IndependentProductionCoeffs[elementConnectivity.Key] = independentSource;
+                model.NodesDictionary.Add(node.ID, node);
             }
 
-            //initialize mpdel provider solution
-            var modelProvider = new GenericComsol3DConvectionDiffusionProductionModelProviderDistributedSpace(modelReader);
 
-            var model = modelProvider.CreateModelFromComsolFile(ConvectionCoeffs, diffusionCoeffs,
-                DependentProductionCoeffs, IndependentProductionCoeffs, capacity);
+
+            foreach (var elementConnectivity in ElementDummyNodesConnectivity)
+            {
+                if (elementConnectivity.Value.Item1 == CellType.Tet4)
+                {
+                    var quadrature = TetrahedronQuadrature.Order1Point1;
+                    var numOfNecessaryDymmies = quadrature.IntegrationPoints.Count();
+
+                    var coeffs = new double[numOfNecessaryDymmies];
+                    var cox = DomainCOx[elementConnectivity.Key];
+                    var t = domainT[elementConnectivity.Key];
+                    coeffs[0] = ((double)1 / 3) * K1 * cox * t / (K2 + cox);
+                    var element1 = new DistributedFirstOrderODEElement3D(elementConnectivity.Value.Item2, quadrature, coeffs);
+                    element1.ID = elementConnectivity.Key; ;
+                    model.ElementsDictionary.Add(elementConnectivity.Key, element1);
+                    model.SubdomainsDictionary[0].Elements.Add(element1);
+                }
+                else
+                {
+                    throw new NotImplementedException();
+                }
+
+            }
+
+
             return model;
+        }
+
+
+        public void AddInitialConditionsForTheRestOfBulkNodes(Model model)
+        {
+            var intitalConditions = new List<INodalConvectionDiffusionInitialCondition>();
+            foreach (var node in DummyNodesDictionary.Values)
+            {
+                
+                    intitalConditions.Add(new NodalInitialUnknownVariable(node, ConvectionDiffusionDof.UnknownVariable, InitialCondition));
+               
+
+            }
+            
+            model.InitialConditions.Add(new ConvectionDiffusionInitialConditionSet(intitalConditions,
+                new DomainInitialUnknownVariable[]
+                { }));
+
+
         }
 
         public void AddBoundaryConditions(Model model)
         {
-            BoundaryAndInitialConditionsUtility.AssignConvectionDiffusionDirichletBCsToModel(model, convectionDiffusionDirichletBC, 1e-3);
+            //BoundaryAndInitialConditionsUtility.AssignConvectionDiffusionDirichletBCsToModel(model, convectionDiffusionDirichletBC, 1e-3);
         }
 
-        public (IParentAnalyzer analyzer, ISolver solver, IChildAnalyzer loadcontrolAnalyzer) GetAppropriateSolverAnalyzerAndLog
-        (Model model, double pseudoTimeStep, double pseudoTotalTime, int currentStep, int nIncrements)
+        //public (IParentAnalyzer analyzer, ISolver solver, IChildAnalyzer loadcontrolAnalyzer) GetAppropriateSolverAnalyzerAndLog
+        //(Model model, double pseudoTimeStep, double pseudoTotalTime, int currentStep, int nIncrements)
+        //{
+        //    var solverFactory = new DenseMatrixSolver.Factory() { IsMatrixPositiveDefinite = false }; //Dense Matrix Solver solves with zero matrices!
+        //    //var solverFactory = new SkylineSolver.Factory() { FactorizationPivotTolerance = 1e-8 };
+        //    algebraicModel = solverFactory.BuildAlgebraicModel(model);
+        //    var solver = solverFactory.BuildSolver(algebraicModel);
+        //    var provider = new ProblemConvectionDiffusion(model, algebraicModel);
+
+        //    var loadControlAnalyzerBuilder = new LoadControlAnalyzer.Builder(algebraicModel, solver, provider, numIncrements: 1)
+        //    {
+        //        ResidualTolerance = 1E-8,
+        //        MaxIterationsPerIncrement = 100,
+        //        NumIterationsForMatrixRebuild = 1
+        //    };
+        //    var loadControlAnalyzer = loadControlAnalyzerBuilder.Build();
+
+        //    loadControlAnalyzer.TotalDisplacementsPerIterationLog = new TotalDisplacementsPerIterationLog(new List<(INode node, IDofType dof)>()
+        //    {(model.NodesDictionary[MonitorNodeId], MonitorDOFType)}, algebraicModel);
+
+        //    var analyzerBuilder = new NewmarkDynamicAnalyzer.Builder(algebraicModel, provider, loadControlAnalyzer, timeStep: pseudoTimeStep, totalTime: pseudoTotalTime, false, currentStep: currentStep);
+        //    analyzerBuilder.SetNewmarkParametersForConstantAcceleration();
+        //    /*var analyzerBuilder = new BDFDynamicAnalyzer.Builder(algebraicModel, provider, loadControlAnalyzer,
+        //        timeStep: pseudoTimeStep, totalTime: pseudoTotalTime, 5);*/
+        //    var analyzer = analyzerBuilder.Build();
+
+        //    var watchDofs = new[]
+        //    {
+        //        new List<(INode node, IDofType dof)>()
+        //        {
+        //            (model.NodesDictionary[MonitorNodeId], MonitorDOFType),
+        //        }
+        //    };
+        //    loadControlAnalyzer.LogFactory = new LinearAnalyzerLogFactory(watchDofs[0], algebraicModel);
+
+        //    return (analyzer, solver, loadControlAnalyzer);
+        //}
+
+        public (IParentAnalyzer analyzer, ISolver solver, IChildAnalyzer loadcontrolAnalyzer) GetAppropriateSolverAnalyzerAndLog(Model model, double TimeStep, double TotalTime, int currentStep, int nIncrements)
         {
-            var solverFactory = new DenseMatrixSolver.Factory() { IsMatrixPositiveDefinite = false }; //Dense Matrix Solver solves with zero matrices!
-            //var solverFactory = new SkylineSolver.Factory() { FactorizationPivotTolerance = 1e-8 };
+            var solverFactory = new DenseMatrixSolver.Factory() { IsMatrixPositiveDefinite = false };
             algebraicModel = solverFactory.BuildAlgebraicModel(model);
             var solver = solverFactory.BuildSolver(algebraicModel);
-            var provider = new ProblemConvectionDiffusion(model, algebraicModel);
+            var problem = new ProblemConvectionDiffusion(model, algebraicModel);
 
-            var loadControlAnalyzerBuilder = new LoadControlAnalyzer.Builder(algebraicModel, solver, provider, numIncrements: 1)
-            {
-                ResidualTolerance = 1E-8,
-                MaxIterationsPerIncrement = 100,
-                NumIterationsForMatrixRebuild = 1
-            };
-            var loadControlAnalyzer = loadControlAnalyzerBuilder.Build();
+            var linearAnalyzer = new LinearAnalyzer(algebraicModel, solver, problem);
 
-            loadControlAnalyzer.TotalDisplacementsPerIterationLog = new TotalDisplacementsPerIterationLog(new List<(INode node, IDofType dof)>()
-            {(model.NodesDictionary[nodeIdToMonitor], dofTypeToMonitor)}, algebraicModel);
 
-            var analyzerBuilder = new NewmarkDynamicAnalyzer.Builder(algebraicModel, provider, loadControlAnalyzer, timeStep: pseudoTimeStep, totalTime: pseudoTotalTime, false, currentStep: currentStep);
+            var analyzerBuilder = new NewmarkDynamicAnalyzer.Builder(algebraicModel, problem, linearAnalyzer, timeStep: TimeStep, totalTime: TotalTime, false, currentStep: currentStep);
             analyzerBuilder.SetNewmarkParametersForConstantAcceleration();
-            /*var analyzerBuilder = new BDFDynamicAnalyzer.Builder(algebraicModel, provider, loadControlAnalyzer,
-                timeStep: pseudoTimeStep, totalTime: pseudoTotalTime, 5);*/
+
             var analyzer = analyzerBuilder.Build();
             var watchDofs = new[]
             {
                 new List<(INode node, IDofType dof)>()
                 {
-                    (model.NodesDictionary[nodeIdToMonitor], dofTypeToMonitor),
+                    (model.NodesDictionary[MonitorNodeId], MonitorDOFType),
                 }
             };
-            loadControlAnalyzer.LogFactory = new LinearAnalyzerLogFactory(watchDofs[0], algebraicModel);
+            linearAnalyzer.LogFactory = new LinearAnalyzerLogFactory(watchDofs[0], algebraicModel);
 
-            return (analyzer, solver, loadControlAnalyzer);
+            return (analyzer, solver, linearAnalyzer);
         }
     }
 }
