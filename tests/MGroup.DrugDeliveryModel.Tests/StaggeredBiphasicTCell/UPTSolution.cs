@@ -31,7 +31,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
         const double Sc = 0.1;
 
         private const double timeStep = 1E-5; // in sec
-        const double totalTime = 2E-3; // in sec
+        const double totalTime = 10e-5; // in sec
         //const double totalTime = 0.0001 ; // in sec
         static int incrementsPertimeStep = 1;
         static int currentTimeStep = 0;
@@ -484,7 +484,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             Assert.True(ResultChecker.CheckResults(gp_dP_dx_OverTime, expected_dpdx_values(), 1e-3));
             Assert.True(ResultChecker.CheckResults(gp_dP_dy_OverTime, expected_dpdy_values(), 1e-3));
             Assert.True(ResultChecker.CheckResults(gp_dP_dz_Overtime, expected_dpdz_values(), 1e-3));
-            //Assert.True(ResultChecker.CheckResults(tCell, expected_Tc_values(), 1e-3));
+            Assert.True(ResultChecker.CheckResults(tCell, expected_Tc_values(), 1e-3));
 
 
 
@@ -737,17 +737,27 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
         public static double[] expected_Tc_values()
         {
             return new double[] {
-                8.97E-03,
-                3.19E-02,
-                7.16E-02,
-                1.30E-01,
-                2.09E-01,
-                3.08E-01,
-                4.29E-01,
-                5.72E-01,
-                7.39E-01,
-                9.29E-01,
-            };
+                //8.97E-03,
+                //3.19E-02,
+                //7.16E-02,
+                //1.30E-01,
+                //2.09E-01,
+                //3.08E-01,
+                //4.29E-01,
+                //5.72E-01,
+                //7.39E-01,
+                //9.29E-01,
+                7.86781E-03,
+                2.76236E-02,
+                7.51637E-02,
+                1.54751E-01,
+                2.66722E-01,
+                4.11353E-01,
+                5.88905E-01,
+                7.99582E-01,
+                1.04358E+00,
+                1.32107E+00,
+                            };
         }
 
 
