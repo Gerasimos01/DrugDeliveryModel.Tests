@@ -226,5 +226,33 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
 
             return (analyzer, solver, linearAnalyzer);
         }
+
+        public void RetrieveLambdaSolution(ISolver solver, IChildAnalyzer childAnalyzer, Model model, Dictionary<int, double> lambda)
+        {
+            //List<double> p = new List<double>();
+
+            var u = childAnalyzer.CurrentAnalysisResult;
+
+            var lamdaSolution = algebraicModel.ExtractAllResults(u);
+            var lamdaNodals = lamdaSolution.Data;
+
+            foreach (var elementConnectivity in modelReader.ElementConnectivity)
+            {
+                var dummyNodes = ElementDummyNodesConnectivity[elementConnectivity.Key].Item2;
+
+                if (elementConnectivity.Value.Item1 == CellType.Tet4)
+                {
+                    var nodalLambda = lamdaNodals[dummyNodes[0].ID, 0];
+                    lambda[elementConnectivity.Key] = nodalLambda;
+                }
+                else
+                {
+                    throw new NotImplementedException();
+                }
+            }
+
+
+            
+        }
     }
 }

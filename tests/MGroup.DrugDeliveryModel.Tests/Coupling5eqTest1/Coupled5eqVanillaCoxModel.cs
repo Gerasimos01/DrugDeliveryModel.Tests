@@ -19,6 +19,9 @@ using MGroup.MSolve.AnalysisWorkflow;
 using MGroup.MSolve.Solution;
 using MGroup.FEM.ConvectionDiffusion.Isoparametric;
 using MGroup.FEM.Structural.Continuum;
+using MGroup.DrugDeliveryModel.Tests.PreliminaryModels;
+using MGroup.Solvers.AlgebraicModel;
+using MGroup.LinearAlgebra.Matrices;
 
 namespace MGroup.DrugDeliveryModel.Tests.Integration
 {
@@ -27,6 +30,9 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
         public Eq78ModelProviderForStaggeredSolutionex7ref Eq78ModelProvider { get; set; }
         public CoxVanillaSourceModelBuilder CoxModelProvider { get; set; }
         public Eq9ModelProviderForStaggeredSolutionEx7Ref Eq9ModelProvider { get; set; }
+        public TCellModelProvider TCellModelProvider { get; }
+
+        public DistributedOdeModelBuilder DistributedOdeModelProvider { get; set; }
 
         public Model[] model;
 
@@ -54,7 +60,11 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
         private Dictionary<int, double[][]> pressureTensorDivergenceAtElementGaussPoints;
         private Dictionary<int, double[]> div_vs;
         private Dictionary<int, double[]> FluidSpeed;
-        private double kth;
+        private double kth;//TODO5eq mpws uparxoun duo kth?
+        private Dictionary<int, double[][]> SolidVelocityAtElementGaussPoints;
+        private Dictionary<int, double> DomainCOx { get; }
+
+        private readonly Dictionary<int, double> domainT; // [cells]
 
         private double timeStep;
         private double totalTime;
@@ -62,21 +72,27 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
         private int incrementsPerStep;
 
         public Coupled5eqVanillaCoxModel(Eq78ModelProviderForStaggeredSolutionex7ref eq78ModelProvider, CoxVanillaSourceModelBuilder coxModelProvider,
-                                     Eq9ModelProviderForStaggeredSolutionEx7Ref eq9ModelProvider, ComsolMeshReader comsolReader,
+                                     Eq9ModelProviderForStaggeredSolutionEx7Ref eq9ModelProvider, TCellModelProvider tCellModelProvider,
+                                     DistributedOdeModelBuilder distributedOdeModelProvider, ComsolMeshReader comsolReader,
+                                      Dictionary<int, double> domainCOx, Dictionary<int, double> T,
             Dictionary<int, double> lambda, Dictionary<int, double[][]> pressureTensorDivergenceAtElementGaussPoints,
-            Dictionary<int, double[]> div_vs, Dictionary<int, double[]> FluidSpeed, double kth, double timeStep, double totalTime, int incrementsPerStep)
+            Dictionary<int, double[]> div_vs, Dictionary<int, double[]> FluidSpeed, Dictionary<int, double[][]> solidVelocityAtElementGaussPoints,
+            double kth, double timeStep, double totalTime, int incrementsPerStep)
         {
             Eq9ModelProvider = eq9ModelProvider;
             CoxModelProvider = coxModelProvider;
             Eq78ModelProvider = eq78ModelProvider;
+            TCellModelProvider = tCellModelProvider;
+            DistributedOdeModelProvider= distributedOdeModelProvider;
+
             IsoparametricJacobian3D.DeterminantTolerance = 1e-20;
 
 
-            analyzerStates = new GenericAnalyzerState[3];
-            nlAnalyzerStates = new GenericAnalyzerState[3];
-            parentAnalyzers = new IParentAnalyzer[3];
-            nlAnalyzers = new IChildAnalyzer[3];
-            parentSolvers = new ISolver[3];
+            analyzerStates = new GenericAnalyzerState[5];
+            nlAnalyzerStates = new GenericAnalyzerState[5];
+            parentAnalyzers = new IParentAnalyzer[5];
+            nlAnalyzers = new IChildAnalyzer[5];
+            parentSolvers = new ISolver[5];
 
             reader = comsolReader;
 
@@ -85,13 +101,18 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             this.div_vs = div_vs;
             this.FluidSpeed = FluidSpeed;
             this.kth = kth;
+            this.DomainCOx = domainCOx;
+            this.domainT = T;
+
+
+            this.SolidVelocityAtElementGaussPoints = solidVelocityAtElementGaussPoints;
 
             this.timeStep = timeStep;
             this.totalTime = totalTime;
             this.incrementsPerStep = incrementsPerStep;
 
             // intialize array ofm models1.
-            model = new Model[3];
+            model = new Model[5];
         }
 
 
@@ -103,6 +124,9 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
 
 
             // update Shared quantities of Coupled model
+            DistributedOdeModelProvider.RetrieveLambdaSolution(ParentSolvers[4], NLAnalyzers[4], model[4], lambda);
+            CoxModelProvider.UpdateGausspointValuesOfElements(DomainCOx, ParentSolvers[2], NLAnalyzers[2], model[2], CoxModelProvider.algebraicModel);
+            TCellModelProvider.UpdateGausspointValuesOfElements(domainT, ParentSolvers[3], NLAnalyzers[3], model[3], TCellModelProvider.algebraicModel);
             //foreach (var elem in reader.ElementConnectivity)
             //{ 
             //    lambda[elem.Key]= lambda0;
@@ -115,7 +139,6 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             {
                 div_vs[elem.Key] = ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocityDivergence;
             }
-
             foreach (var elem in reader.ElementConnectivity)
             {//CALCULATE vf = kP + vs
                 FluidSpeed[elem.Key] = new double[3]
@@ -125,7 +148,16 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
                     (-(pressureTensorDivergenceAtElementGaussPoints[elem.Key][0][2] * kth) + ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][2]) * 1000,
                 };
             }
-            model = new Model[3];
+            foreach (var elem in reader.ElementConnectivity)
+            {
+                var velocityAtGP0 = ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0];
+                SolidVelocityAtElementGaussPoints[elem.Key][0][0] = velocityAtGP0[0] * 1000;
+                SolidVelocityAtElementGaussPoints[elem.Key][0][1] = velocityAtGP0[1] * 1000;
+                SolidVelocityAtElementGaussPoints[elem.Key][0][2] = velocityAtGP0[2] * 1000;
+            }
+
+
+            model = new Model[5];
 
             //Create model for eq78 (fluid pressure)
             model[0] = Eq78ModelProvider.GetModel();
@@ -141,6 +173,21 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             model[2] = CoxModelProvider.GetModel();
             CoxModelProvider.AddBoundaryConditions(model[2]);
             (analyzers[2], solvers[2], nlAnalyzers[2]) = CoxModelProvider.GetAppropriateSolverAnalyzerAndLog(model[2], timeStep, totalTime, CurrentTimeStep, incrementsPerStep);
+
+            //Create model for T equation 
+            model[3] = TCellModelProvider.GetModel();
+            TCellModelProvider.AddBoundaryConditions(model[3]);
+            (analyzers[3], solvers[3], nlAnalyzers[3]) = TCellModelProvider.GetAppropriateSolverAnalyzerAndLog(model[3], timeStep, totalTime, CurrentTimeStep);
+
+            //Create model for lambda equation 
+            model[4] = DistributedOdeModelProvider.GetModel();
+            DistributedOdeModelProvider.AddBoundaryConditions(model[4]);
+            if (CurrentTimeStep == 0)
+            {
+                DistributedOdeModelProvider.AddInitialConditionsForTheRestOfBulkNodes(model[4]);
+
+            }
+            (analyzers[4], solvers[4], nlAnalyzers[4]) = DistributedOdeModelProvider.GetAppropriateSolverAnalyzerAndLog(model[4], timeStep, totalTime, CurrentTimeStep, incrementsPerStep);
 
             for (int i = 0; i < analyzers.Length; i++)
             {
@@ -161,6 +208,10 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
         {
             if (!(CurrentTimeStep == 0))
             {
+                DistributedOdeModelProvider.RetrieveLambdaSolution(ParentSolvers[4], NLAnalyzers[4], model[4], lambda);
+                CoxModelProvider.UpdateGausspointValuesOfElements(DomainCOx, ParentSolvers[2], NLAnalyzers[2], model[2], CoxModelProvider.algebraicModel);
+                TCellModelProvider.UpdateGausspointValuesOfElements(domainT, ParentSolvers[3], NLAnalyzers[3], model[3], TCellModelProvider.algebraicModel);
+
                 foreach (var elem in reader.ElementConnectivity)
                 {
                     pressureTensorDivergenceAtElementGaussPoints[elem.Key] = ((ConvectionDiffusionElement3D)model[0].ElementsDictionary[elem.Key]).pressureTensorDivergenceAtGaussPoints;
@@ -179,10 +230,18 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
                          (-(pressureTensorDivergenceAtElementGaussPoints[elem.Key][0][2] * kth) + ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0][2]) * 1000,
                     };
                 }
+                foreach (var elem in reader.ElementConnectivity)
+                {
+                    var velocityAtGP0 = ((ContinuumElement3DGrowth)model[1].ElementsDictionary[elem.Key]).velocity[0];
+                    SolidVelocityAtElementGaussPoints[elem.Key][0][0] = velocityAtGP0[0] * 1000;
+                    SolidVelocityAtElementGaussPoints[elem.Key][0][1] = velocityAtGP0[1] * 1000;
+                    SolidVelocityAtElementGaussPoints[elem.Key][0][2] = velocityAtGP0[2] * 1000;
+                }
+
             }
 
 
-            model = new Model[3];
+            model = new Model[5];
 
             //Create Initial Model eq78 (fluid pressure)
             model[0] = Eq78ModelProvider.GetModel();
@@ -203,6 +262,22 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             CoxModelProvider.AddBoundaryConditions(model[2]);
             (analyzers[2], solvers[2], nlAnalyzers[2]) = CoxModelProvider.GetAppropriateSolverAnalyzerAndLog(model[2], timeStep, totalTime, CurrentTimeStep, incrementsPerStep);
 
+            //Create model for T equation (cox)
+            model[3] = TCellModelProvider.GetModel();
+            TCellModelProvider.AddBoundaryConditions(model[3]);
+            (analyzers[3], solvers[3], nlAnalyzers[3]) = TCellModelProvider.GetAppropriateSolverAnalyzerAndLog(model[3], timeStep, totalTime, CurrentTimeStep);
+
+            //Create model for lambda equation 
+            model[4] = DistributedOdeModelProvider.GetModel();
+            DistributedOdeModelProvider.AddBoundaryConditions(model[4]);
+            if (CurrentTimeStep == 0)
+            {
+                DistributedOdeModelProvider.AddInitialConditionsForTheRestOfBulkNodes(model[4]);
+
+            }
+            (analyzers[4], solvers[4], nlAnalyzers[4]) = DistributedOdeModelProvider.GetAppropriateSolverAnalyzerAndLog(model[4], timeStep, totalTime, CurrentTimeStep, incrementsPerStep);
+
+
             for (int i = 0; i < analyzers.Length; i++)
             {
                 analyzers[i].Initialize(true);
@@ -222,5 +297,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
         {
             Eq9ModelProvider.SaveStateFromElements(model[1]);
         }
+
+        
     }
 }

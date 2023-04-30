@@ -27,6 +27,9 @@ using System.Reflection.PortableExecutable;
 using static Xunit.Assert;
 using MGroup.MSolve.Discretization;
 using static MGroup.DrugDeliveryModel.Tests.Commons.Utilities;
+using MGroup.DrugDeliveryModel.Tests.PreliminaryModels;
+using BC = MGroup.DrugDeliveryModel.Tests.Commons.BoundaryAndInitialConditionsUtility.BoundaryConditionCase;
+
 
 namespace MGroup.DrugDeliveryModel.Tests.Integration
 {
@@ -262,7 +265,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
         /// <summary>
         /// Cancer cell density [1]
         /// </summary>
-        private Dictionary<int, double> T = new Dictionary<int, double>();// 500 [cells]
+        private Dictionary<int, double> domainT = new Dictionary<int, double>();// 500 [cells]
         const double TInit = 500;
 
         //---------------------------------------Logging----------------------------------
@@ -295,6 +298,66 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
                 (BoundaryAndInitialConditionsUtility.BoundaryConditionCase.BackDirichlet, new ConvectionDiffusionDof[] { ConvectionDiffusionDof.UnknownVariable }, new double[1][]{new double[3] {0.1, 0.1, 0.1}}, new double[] {0.2d}),
             };
         List<(BoundaryAndInitialConditionsUtility.BoundaryConditionCase, ConvectionDiffusionDof[], double[][], double[])> convectionDiffusionNeumannBC = new List<(BoundaryAndInitialConditionsUtility.BoundaryConditionCase, ConvectionDiffusionDof[], double[][], double[])>();
+        #endregion
+
+        #region Cancer Cell Density (TCell) model
+
+        private const double dummySolidVelovity = -5;
+
+        /// <summary>
+        /// Growth rate parameter 1[mol/(m3)]
+        /// </summary>
+        private const double K1 = 1.74E-6; // [1/s]
+
+        /// <summary>
+        /// Growth rate parameter 2[mol/(m3)]
+        /// </summary>
+        private const double K2 = 8.3E-3; // [mol/(m3)]
+
+        /// <summary>
+        /// Oxygen concentration (Dependent Variable) [mol/m3]
+        /// </summary>
+        private const double Cox = 0.2; // [mol / m3]
+
+        #endregion
+
+        #region Cancer Cell Density (TCell) Boundary Conditions
+
+
+        private static List<(BC, ConvectionDiffusionDof[], double[][], double[])> tCellDirichletBC =
+            new List<(BC, ConvectionDiffusionDof[], double[][], double[])>()
+        {(BC.TopRightBackDiriclet, constrainedDofType, new double[2][]{new double[3] {0,0,0},new double[3] {0.1,0.1,0.1}}, new double[]{500d}),};
+
+        private static List<(BC, ConvectionDiffusionDof[], double[][], double[])>
+                tCellNeumannBC = new List<(BC, ConvectionDiffusionDof[], double[][], double[])>();
+
+        #endregion
+
+        #region Cancer Cell Density (TCell)  Initial condition
+
+        private double initialTCellDensity = 0d;
+
+        #endregion
+
+        #region Cancer Cell Density (TCell)  logs
+
+        static List<(double[], string, StructuralDof, int, double[])> nodeTCellLogs = new List<(double[], string, StructuralDof, int, double[])>()
+            {(new double[]{ 0.04930793848882013,0.04994681648346263,0.075 }, "CornerNodeTranslationZ.txt",StructuralDof.TranslationZ,-1, new double[0])};
+
+        //static double[] tCellMonitorNodeCoords = new double[] { 0.055, 0.0559, 0.07366 };
+        static double[] tCellMonitorNodeCoords = { 0.0, 0.0, 0.09 };
+
+        private static int tCellMonitorID;
+
+        static ConvectionDiffusionDof tCellMonitorDOF = ConvectionDiffusionDof.UnknownVariable;
+
+        #endregion
+
+        #region growth log
+        private static ConvectionDiffusionDof lamdaMonitorDOF = ConvectionDiffusionDof.UnknownVariable;
+        int lamdanodeIdToMonitor = 0; //Todo5eq perform search for log etc.
+        static double[] monitoredGPcoordsLamda = { 0.025,0.025, 0.025 };
+        //TODo5eq perform searchh for Tcell logs as well
         #endregion
 
 
@@ -337,7 +400,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
 
                 //Cox Init
                 FluidSpeed.Add(elem.Key, new double[] { FluidSpeedInit, FluidSpeedInit, FluidSpeedInit });
-                T.Add(elem.Key, TInit);
+                domainT.Add(elem.Key, TInit); //Todo5eq update tis in model coupler with solution values
             }
 
             Dictionary<int, double[][]> pressureTensorDivergenceAtElementGaussPoints =
@@ -364,8 +427,27 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
                 velocityDivergenceAtElementGaussPoints.Add(elem.Key, velocityDiv);
             }
 
+            Dictionary<int, double[][]> solidVelocity =
+                new Dictionary<int, double[][]>(comsolReader.ElementConnectivity.Count());
+            foreach (var elem in comsolReader.ElementConnectivity)
+            {
+                var velocity = new double[nGaussPoints][];
+                for (int i1 = 0; i1 < nGaussPoints; i1++)
+                {
+                    velocity[i1] = new double[] { 0d, 0d, 0d };
+                }
+                solidVelocity.Add(elem.Key, velocity);
+            }
+
+            Dictionary<int, double> domainCOx =
+                new Dictionary<int, double>(comsolReader.ElementConnectivity.Count());
+            foreach (var elem in comsolReader.ElementConnectivity)
+            {
+                domainCOx.Add(elem.Key, Cox); //Todo5eq update tis in model coupler with solution values
+            }
+
             miNormal = miTumor; // TODO : remove this from here
-            kappaNormal = kappaTumor;
+            kappaNormal = kappaTumor; //TODO5eq
 
             #region loggin (defined before model builder creation to give them nodes)
             structuralMonitorID = Utilities.FindNodeIdFromNodalCoordinates(comsolReader.NodesDictionary, structuralMonitorNodeCoords, 1e-2);
@@ -375,6 +457,8 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             coxMonitorID = Utilities.FindNodeIdFromNodalCoordinates(comsolReader.NodesDictionary, coxMonitorNodeCoords, 1e-2);
             fluidVelocityMonitorID = Utilities.FindNodeIdFromNodalCoordinates(comsolReader.NodesDictionary, monitoredGPcoordsFluidVelocity, 1e-2);
             solidVelocityGPId = Utilities.FindNodeIdFromNodalCoordinates(comsolReader.NodesDictionary, solidVelocityGPCoords, 1e-2);
+            tCellMonitorID = Utilities.FindNodeIdFromNodalCoordinates(comsolReader.NodesDictionary, tCellMonitorNodeCoords, 1e-2);
+
             int paraviewcounter = 0;
             var p_i = new double[(int)(totalTime / timeStep)];
 
@@ -424,6 +508,8 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             fluidVelocity.Add(wFluid_t);
 
             double[] coxResults = new double[(int)(totalTime / timeStep)];
+            double[] tCell = new double[(int)(totalTime / timeStep)];
+
 
             int monitoredGPVelocity_elemID = -1; // TODO Orestis this will be deleeted if new logs are implemented in a right way.
             int monitoredGPpressureGrad_elemID = -1; // TODO Orestis this will be deleeted if new logs are implemented in a right way.
@@ -446,10 +532,19 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
 
                                             coxMonitorID, coxMonitorDOF, convectionDiffusionDirichletBC, convectionDiffusionNeumannBC);
 
+            //Create Model For TCell
+            var tCellModel = new TCellModelProvider(K1, K2, domainCOx, solidVelocity, comsolReader,
+                tCellMonitorDOF, tCellMonitorID, tCellDirichletBC, tCellNeumannBC, initialTCellDensity);
+
+            var distributedOdeModel = new DistributedOdeModelBuilder(comsolReader, K1, K2, domainCOx, domainT, 1d, lamdaMonitorDOF, lamdanodeIdToMonitor);
+
+
             //COMMITED BY NACHO 
             //jkkk bn///////vji typ[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[00u-----------------------------------
 
-            var equationModel = new Coupled78_9_13_VanillaSourceModel(eq78Model, coxModel, eq9Model, comsolReader, lambda, pressureTensorDivergenceAtElementGaussPoints, velocityDivergenceAtElementGaussPoints, FluidSpeed, k_th_tumor, timeStep,
+            var equationModel = new Coupled5eqVanillaCoxModel(eq78Model, coxModel, eq9Model,tCellModel, distributedOdeModel, comsolReader,
+                domainCOx, domainT, lambda, pressureTensorDivergenceAtElementGaussPoints, velocityDivergenceAtElementGaussPoints,
+                FluidSpeed,solidVelocity, k_th_tumor, timeStep,
                 totalTime, incrementsPertimeStep);
 
             var staggeredAnalyzer = new StepwiseStaggeredAnalyzer(equationModel.ParentAnalyzers, equationModel.ParentSolvers, equationModel.CreateModel, maxStaggeredSteps: 200, tolerance: 1E-5);
@@ -498,6 +593,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
 
 
                 coxResults[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[2].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[2].GetNode(coxMonitorID), coxMonitorDOF];
+                tCell[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[3].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[3].GetNode(tCellMonitorID), tCellMonitorDOF];
                 //vf_calculated.Add(FluidSpeed[vfMonitorGpID]);
                 //model maximus (DO NOT ERASE)
                 //modelMaxVelDivOverTime[currentTimeStep] = velocityDivergenceAtElementGaussPoints.Select(x => Math.Abs(x.Value[0])).ToArray().Max();
@@ -574,14 +670,15 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
 
                 #endregion
 
-                (equationModel.ParentAnalyzers[0] as NewmarkDynamicAnalyzer).AdvanceStep();
-                (equationModel.ParentAnalyzers[1] as NewmarkDynamicAnalyzer).AdvanceStep();
-                (equationModel.ParentAnalyzers[2] as NewmarkDynamicAnalyzer).AdvanceStep();
+                //(equationModel.ParentAnalyzers[0] as NewmarkDynamicAnalyzer).AdvanceStep();
+                //(equationModel.ParentAnalyzers[1] as NewmarkDynamicAnalyzer).AdvanceStep();
+                //(equationModel.ParentAnalyzers[2] as NewmarkDynamicAnalyzer).AdvanceStep();
 
                 for (int j = 0; j < equationModel.ParentAnalyzers.Length; j++)
                 {
                     equationModel.AnalyzerStates[j] = equationModel.ParentAnalyzers[j].CreateState();
                     equationModel.NLAnalyzerStates[j] = equationModel.NLAnalyzers[j].CreateState();
+                    (equationModel.ParentAnalyzers[j] as NewmarkDynamicAnalyzer).AdvanceStep();
                 }
 
                 equationModel.SaveStateFromElements();

@@ -24,6 +24,9 @@ using System.Security.AccessControl;
 using BC = MGroup.DrugDeliveryModel.Tests.Commons.BoundaryAndInitialConditionsUtility.BoundaryConditionCase;
 using MGroup.LinearAlgebra.Matrices;
 using MGroup.Solvers.AlgebraicModel;
+using MGroup.MSolve.Numerics.Integration.Quadratures;
+using MGroup.MSolve.Numerics.Interpolation;
+using MGroup.MSolve.Discretization;
 
 namespace MGroup.DrugDeliveryModel.Tests.Integration
 {
@@ -373,6 +376,60 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             linearAnalyzer.LogFactory = new LinearAnalyzerLogFactory(watchDofs[0], algebraicModel);
 
             return (analyzer, solver, linearAnalyzer);
+        }
+
+        public void UpdateGausspointValuesOfElements(Dictionary<int, double> domainCox, ISolver solver, IChildAnalyzer childAnalyzer, Model model, GlobalAlgebraicModel<Matrix> algebraicModel)
+        {
+            var p = childAnalyzer.CurrentAnalysisResult;
+            var interpolation = InterpolationTet4.UniqueInstance;
+            var quadrature = TetrahedronQuadrature.Order1Point1;
+            foreach (var elem in model.ElementsDictionary.Values)
+            {
+                var elemSoultion = algebraicModel.ExtractElementVector(p, elem);
+                domainCox[elem.ID] = UpdateGauspointQuantitiesOfElement(elemSoultion, interpolation, quadrature, elem);
+            }
+
+        }
+
+        private double UpdateGauspointQuantitiesOfElement(double[] localDisplacements, IIsoparametricInterpolation3D Interpolation,
+         IQuadrature3D quadratureForMass, IElementType element)
+        {
+            var shapeFunctions = Interpolation.EvaluateFunctionsAtGaussPoints(quadratureForMass);
+
+
+            //double[][] pressureTensorDivergenceAtGaussPoints = new double[quadratureForMass.IntegrationPoints.Count][];
+            //IReadOnlyList<Matrix> shapeFunctionNaturalDerivatives;
+            //shapeFunctionNaturalDerivatives = Interpolation.EvaluateNaturalGradientsAtGaussPoints(quadratureForMass);
+            //var jacobians = shapeFunctionNaturalDerivatives.Select(x => new IsoparametricJacobian3D(element.Nodes, x));
+            //Matrix[] jacobianInverse = jacobians.Select(x => x.InverseMatrix.Transpose()).ToArray();
+            //for (int gp = 0; gp < quadratureForMass.IntegrationPoints.Count; ++gp)
+            //{
+            //    double[] dphi_dnatural = new double[3]; //{ dphi_dksi, dphi_dheta, dphi_dzeta}
+            //    for (int i1 = 0; i1 < shapeFunctionNaturalDerivatives[gp].NumRows; i1++)
+            //    {
+            //        dphi_dnatural[0] += shapeFunctionNaturalDerivatives[gp][i1, 0] * localDisplacements[i1];
+            //        dphi_dnatural[1] += shapeFunctionNaturalDerivatives[gp][i1, 1] * localDisplacements[i1];
+            //        dphi_dnatural[2] += shapeFunctionNaturalDerivatives[gp][i1, 2] * localDisplacements[i1];
+            //    }
+
+            //    var dphi_dnaturalMAT = Matrix.CreateFromArray(dphi_dnatural, 1, 3);
+
+            //    var dphi_dcartesian = dphi_dnaturalMAT * jacobianInverse[gp].Transpose();
+
+            //    pressureTensorDivergenceAtGaussPoints[gp] = new double[3] { dphi_dcartesian[0, 0], dphi_dcartesian[0, 1], dphi_dcartesian[0, 2] };
+
+            //}
+
+            double elementCox = 0;
+
+            for (int i1 = 0; i1 < shapeFunctions[0].Length; i1++)
+            {
+                elementCox += shapeFunctions[0][i1] * localDisplacements[i1];
+            }
+
+            //an exoume perissotera GP vazoume for (int gp = 0; gp < quadratureForMass.IntegrationPoints.Count; ++gp)
+
+            return elementCox;
         }
     }
 }

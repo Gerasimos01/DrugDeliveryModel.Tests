@@ -17,6 +17,11 @@ using MGroup.Constitutive.ConvectionDiffusion.BoundaryConditions;
 using System.Linq;
 using System.Xml.Linq;
 using BC = MGroup.DrugDeliveryModel.Tests.Commons.BoundaryAndInitialConditionsUtility.BoundaryConditionCase;
+using MGroup.Solvers.AlgebraicModel;
+using MGroup.LinearAlgebra.Matrices;
+using MGroup.MSolve.Discretization;
+using MGroup.MSolve.Numerics.Integration.Quadratures;
+using MGroup.MSolve.Numerics.Interpolation;
 
 namespace MGroup.DrugDeliveryModel.Tests.PreliminaryModels;
 
@@ -29,6 +34,8 @@ public class TCellModelProvider
 
     public Dictionary<int, double[][]> SolidVelocity { get; set; }
     private ComsolMeshReader Mesh { get; }
+
+    public GlobalAlgebraicModel<Matrix> algebraicModel;
     private ConvectionDiffusionDof MonitorDOFType { get; }
     private int MonitorNodeId { get; }
     private List<(BC, ConvectionDiffusionDof[], double[][], double[])> DirichletBCs { get; }
@@ -248,7 +255,7 @@ public class TCellModelProvider
     {
         var solverFactory = new DenseMatrixSolver.Factory() { IsMatrixPositiveDefinite = false }; //Dense Matrix Solver solves with zero matrices!
                                                                                                   //var solverFactory = new SkylineSolver.Factory() { FactorizationPivotTolerance = 1e-8 };
-        var algebraicModel = solverFactory.BuildAlgebraicModel(model);
+        algebraicModel = solverFactory.BuildAlgebraicModel(model);
         var solver = solverFactory.BuildSolver(algebraicModel);
         var provider = new ProblemConvectionDiffusion(model, algebraicModel);
 
@@ -282,5 +289,35 @@ public class TCellModelProvider
         linearAnalyzer.LogFactory = new LinearAnalyzerLogFactory(watchDofs[0], algebraicModel);
 
         return (analyzer, solver, linearAnalyzer);
+    }
+
+    public void UpdateGausspointValuesOfElements(Dictionary<int, double> domainT, ISolver solver, IChildAnalyzer childAnalyzer, Model model, GlobalAlgebraicModel<Matrix> algebraicModel)
+    {
+        var p = childAnalyzer.CurrentAnalysisResult;
+        var interpolation = InterpolationTet4.UniqueInstance;
+        var quadrature = TetrahedronQuadrature.Order1Point1;
+        foreach (var elem in model.ElementsDictionary.Values)
+        {
+            var elemSoultion = algebraicModel.ExtractElementVector(p, elem);
+            domainT[elem.ID] = UpdateGauspointQuantitiesOfElement(elemSoultion, interpolation, quadrature, elem);
+        }
+
+    }
+
+    private double UpdateGauspointQuantitiesOfElement(double[] localDisplacements, IIsoparametricInterpolation3D Interpolation,
+     IQuadrature3D quadratureForMass, IElementType element)
+    {
+        var shapeFunctions = Interpolation.EvaluateFunctionsAtGaussPoints(quadratureForMass);
+
+        double elementT = 0;
+
+        for (int i1 = 0; i1 < shapeFunctions[0].Length; i1++)
+        {
+            elementT += shapeFunctions[0][i1] * localDisplacements[i1];
+        }
+
+        //an exoume perissotera GP vazoume for (int gp = 0; gp < quadratureForMass.IntegrationPoints.Count; ++gp)
+
+        return elementT;
     }
 }
