@@ -33,7 +33,7 @@ using BC = MGroup.DrugDeliveryModel.Tests.Commons.BoundaryAndInitialConditionsUt
 
 namespace MGroup.DrugDeliveryModel.Tests.Integration
 {
-    public class Coupled5eqVanillaCoxSolution
+    public class Coupled5eqVanillaCoxSolutionDummy
     {
         const double Sc = 0.1;
 
@@ -361,7 +361,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
         #endregion
 
 
-        public Coupled5eqVanillaCoxSolution()
+        public Coupled5eqVanillaCoxSolutionDummy()
         {
             IsoparametricJacobian3D.DeterminantTolerance = 1e-20;
         }
