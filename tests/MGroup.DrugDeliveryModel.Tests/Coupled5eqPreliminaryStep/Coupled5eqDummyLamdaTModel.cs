@@ -25,7 +25,7 @@ using MGroup.LinearAlgebra.Matrices;
 
 namespace MGroup.DrugDeliveryModel.Tests.Integration
 {
-    public class Coupled5eqVanillaCoxModel
+    public class Coupled5eqDummyLamdaTModel
     {
         public Eq78ModelProviderForStaggeredSolutionex7ref Eq78ModelProvider { get; set; }
         public CoxVanillaSourceModelBuilder CoxModelProvider { get; set; }
@@ -71,7 +71,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
 
         private int incrementsPerStep;
 
-        public Coupled5eqVanillaCoxModel(Eq78ModelProviderForStaggeredSolutionex7ref eq78ModelProvider, CoxVanillaSourceModelBuilder coxModelProvider,
+        public Coupled5eqDummyLamdaTModel(Eq78ModelProviderForStaggeredSolutionex7ref eq78ModelProvider, CoxVanillaSourceModelBuilder coxModelProvider,
                                      Eq9ModelProviderForStaggeredSolutionEx7Ref eq9ModelProvider, TCellModelProvider tCellModelProvider,
                                      DistributedOdeModelBuilder distributedOdeModelProvider, ComsolMeshReader comsolReader,
                                       Dictionary<int, double> domainCOx, Dictionary<int, double> T,
@@ -83,7 +83,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             CoxModelProvider = coxModelProvider;
             Eq78ModelProvider = eq78ModelProvider;
             TCellModelProvider = tCellModelProvider;
-            DistributedOdeModelProvider= distributedOdeModelProvider;
+            DistributedOdeModelProvider = distributedOdeModelProvider;
 
             IsoparametricJacobian3D.DeterminantTolerance = 1e-20;
 
