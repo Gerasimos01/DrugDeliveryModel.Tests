@@ -342,22 +342,23 @@ namespace MGroup.DrugDeliveryModel.Tests.Coupled5eqPreliminaryStep
 
         #region Cancer Cell Density (TCell)  logs
 
-        static List<(double[], string, StructuralDof, int, double[])> nodeTCellLogs = new List<(double[], string, StructuralDof, int, double[])>()
-            {(new double[]{ 0.04930793848882013,0.04994681648346263,0.075 }, "CornerNodeTranslationZ.txt",StructuralDof.TranslationZ,-1, new double[0])};
+        //static List<(double[], string, StructuralDof, int, double[])> nodeTCellLogs = new List<(double[], string, StructuralDof, int, double[])>()
+        //    {(new double[]{ 0.04930793848882013,0.04994681648346263,0.075 }, "CornerNodeTranslationZ.txt",StructuralDof.TranslationZ,-1, new double[0])};
 
         //static double[] tCellMonitorNodeCoords = new double[] { 0.055, 0.0559, 0.07366 };
-        static double[] tCellMonitorNodeCoords = { 0.0, 0.0, 0.09 };
+        //static double[] tCellMonitorNodeCoords = { 0.0, 0.0, 0.09 };
 
-        private static int tCellMonitorID;
+        //private static int tCellMonitorID;
 
-        static ConvectionDiffusionDof tCellMonitorDOF = ConvectionDiffusionDof.UnknownVariable;
+        //static ConvectionDiffusionDof tCellMonitorDOF = ConvectionDiffusionDof.UnknownVariable;
 
         #endregion
 
         #region growth log
         private static ConvectionDiffusionDof lamdaMonitorDOF = ConvectionDiffusionDof.UnknownVariable;
-        int lamdanodeIdToMonitor = 0; //Todo5eq perform search for log etc.
+        static int lamdaElemIdToMonitor = 0; //Todo5eq perform search for log etc.
         static double[] monitoredGPcoordsLamda = { 0.025, 0.025, 0.025 };
+        static int lamdanodeIdToMonitor = -1;
         //TODo5eq perform searchh for Tcell logs as well
         #endregion
 
@@ -458,7 +459,6 @@ namespace MGroup.DrugDeliveryModel.Tests.Coupled5eqPreliminaryStep
             coxMonitorID = FindNodeIdFromNodalCoordinates(comsolReader.NodesDictionary, coxMonitorNodeCoords, 1e-2);
             fluidVelocityMonitorID = FindNodeIdFromNodalCoordinates(comsolReader.NodesDictionary, monitoredGPcoordsFluidVelocity, 1e-2);
             solidVelocityGPId = FindNodeIdFromNodalCoordinates(comsolReader.NodesDictionary, solidVelocityGPCoords, 1e-2);
-            tCellMonitorID = FindNodeIdFromNodalCoordinates(comsolReader.NodesDictionary, tCellMonitorNodeCoords, 1e-2);
 
             int paraviewcounter = 0;
             var p_i = new double[(int)(totalTime / timeStep)];
@@ -509,7 +509,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Coupled5eqPreliminaryStep
             fluidVelocity.Add(wFluid_t);
 
             double[] coxResults = new double[(int)(totalTime / timeStep)];
-            double[] tCell = new double[(int)(totalTime / timeStep)];
+            //double[] tCell = new double[(int)(totalTime / timeStep)];
 
 
             int monitoredGPVelocity_elemID = -1; // TODO Orestis this will be deleeted if new logs are implemented in a right way.
@@ -533,9 +533,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Coupled5eqPreliminaryStep
 
                                             coxMonitorID, coxMonitorDOF, convectionDiffusionDirichletBC, convectionDiffusionNeumannBC);
 
-            //Create Model For TCell
-            var tCellModel = new TCellModelProvider(K1, K2, domainCOx, solidVelocity, comsolReader,
-                tCellMonitorDOF, tCellMonitorID, tCellDirichletBC, tCellNeumannBC, initialTCellDensity);
+            
 
             var distributedOdeModel = new DistributedOdeModelBuilder(comsolReader, K1, K2, domainCOx, domainT, 1d, lamdaMonitorDOF, lamdanodeIdToMonitor);
 
@@ -543,13 +541,17 @@ namespace MGroup.DrugDeliveryModel.Tests.Coupled5eqPreliminaryStep
             //COMMITED BY NACHO 
             //jkkk bn///////vji typ[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[00u-----------------------------------
 
-            var equationModel = new Coupled5eqDummyLamdaModel(eq78Model, coxModel, eq9Model, tCellModel, distributedOdeModel, comsolReader,
-                domainCOx, domainT, lambda, pressureTensorDivergenceAtElementGaussPoints, velocityDivergenceAtElementGaussPoints,
-                FluidSpeed, solidVelocity, k_th_tumor, timeStep,
+            var equationModel = new Coupled5eqDummyLamdaModel(eq78Model, coxModel, eq9Model, distributedOdeModel, comsolReader,
+                domainCOx, pressureTensorDivergenceAtElementGaussPoints, velocityDivergenceAtElementGaussPoints,
+                FluidSpeed, k_th_tumor, timeStep,
                 totalTime, incrementsPertimeStep);
 
             #region loggin defteri perioxi gia logs
-
+            var geometriccModel = eq9Model.GetModel();
+            lamdaElemIdToMonitor = Utilities.FindElementIdFromGaussPointCoordinatesStructural(geometriccModel, monitoredGPcoordsLamda, 1e-1); //Todo Orestis delete these commands1
+            lamdanodeIdToMonitor = distributedOdeModel.GetDummyNodeIdForElementId(lamdaElemIdToMonitor, 0);
+            distributedOdeModel.MonitorNodeId = lamdanodeIdToMonitor;
+            double[] lamdaResults = new double[(int)(totalTime / timeStep)]; // copy kai ekei pou to gemizoume
             #endregion
 
             var staggeredAnalyzer = new StepwiseStaggeredAnalyzer(equationModel.ParentAnalyzers, equationModel.ParentSolvers, equationModel.CreateModel, maxStaggeredSteps: 200, tolerance: 1E-5);
@@ -568,6 +570,8 @@ namespace MGroup.DrugDeliveryModel.Tests.Coupled5eqPreliminaryStep
 
                 //nodal logs
                 p_i[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[0].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[0].GetNode(pressureMonitorID), eq7n8dofTypeToMonitor];
+                lamdaResults[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[3].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[3].GetNode(lamdanodeIdToMonitor), lamdaMonitorDOF];
+
                 //p_i[currentTimeStep] = 0d;
                 //structuralResultsX[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[1].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[1].GetNode(structuralMonitorID), StructuralDof.TranslationX];
                 //structuralResultsY[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[1].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[1].GetNode(structuralMonitorID), StructuralDof.TranslationY];
@@ -598,7 +602,6 @@ namespace MGroup.DrugDeliveryModel.Tests.Coupled5eqPreliminaryStep
 
 
                 coxResults[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[2].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[2].GetNode(coxMonitorID), coxMonitorDOF];
-                tCell[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[3].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[3].GetNode(tCellMonitorID), tCellMonitorDOF];
                 //vf_calculated.Add(FluidSpeed[vfMonitorGpID]);
                 //model maximus (DO NOT ERASE)
                 //modelMaxVelDivOverTime[currentTimeStep] = velocityDivergenceAtElementGaussPoints.Select(x => Math.Abs(x.Value[0])).ToArray().Max();
@@ -675,15 +678,20 @@ namespace MGroup.DrugDeliveryModel.Tests.Coupled5eqPreliminaryStep
 
                 #endregion
 
-                //(equationModel.ParentAnalyzers[0] as NewmarkDynamicAnalyzer).AdvanceStep();
-                //(equationModel.ParentAnalyzers[1] as NewmarkDynamicAnalyzer).AdvanceStep();
-                //(equationModel.ParentAnalyzers[2] as NewmarkDynamicAnalyzer).AdvanceStep();
+                
+                for (int j = 0; j < equationModel.ParentAnalyzers.Length; j++)
+                {
+                    (equationModel.ParentAnalyzers[j] as NewmarkDynamicAnalyzer).AdvanceStep();
+                }
+
+                //-------------------------------------------------------------------
+                //      WARNING Advance step comes allways before create state
+                //-------------------------------------------------------------------
 
                 for (int j = 0; j < equationModel.ParentAnalyzers.Length; j++)
                 {
                     equationModel.AnalyzerStates[j] = equationModel.ParentAnalyzers[j].CreateState();
                     equationModel.NLAnalyzerStates[j] = equationModel.NLAnalyzers[j].CreateState();
-                    (equationModel.ParentAnalyzers[j] as NewmarkDynamicAnalyzer).AdvanceStep();
                 }
 
                 equationModel.SaveStateFromElements();
@@ -699,6 +707,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Coupled5eqPreliminaryStep
             CSVExporter.ExportMatrixToCSV(CSVExporter.ConverVectorsTo2DArray(fluidVelocity), "../../../Coupling78_9_13/results/vFluid_GP_mslv.csv");
             CSVExporter.ExportMatrixToCSV(CSVExporter.ConverVectorsTo2DArray(solidVelocities), "../../../Coupling78_9_13/results/vSolid_GP_mslv.csv");
 
+            
             True(ResultChecker.CheckResults(wFluid_t, expected_fluid_velocity(), 1e-3));
             True(ResultChecker.CheckResults(structuralResultsZ, expectedDisplacments(), 1e-3));
             True(ResultChecker.CheckResults(gp_dP_dx_OverTime, expected_dpdx_values(), 1e-3));

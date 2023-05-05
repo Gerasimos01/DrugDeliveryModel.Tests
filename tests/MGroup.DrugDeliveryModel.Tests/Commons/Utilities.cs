@@ -264,7 +264,32 @@ namespace MGroup.DrugDeliveryModel.Tests.Commons
 			return id;
 		}
 
-		public static List<INode> FindElementNodesFromElementId(Model model, int elementId)
+        public static int FindElementIdFromGaussPointCoordinatesStructural(Model model, double[] gpCoords, double tolerrance)
+        {
+            var id = -1;
+            var cuurentDistance = 1000d;
+            foreach (var element in model.ElementsDictionary)
+            {
+                var elementGpCoords = ((ContinuumElement3DGrowth)element.Value).GetGaussPointsCoordinates(0);
+                double distance = Math.Sqrt(Math.Pow(elementGpCoords[0] - gpCoords[0], 2) +
+                                            Math.Pow(elementGpCoords[1] - gpCoords[1], 2) +
+                                            Math.Pow(elementGpCoords[2] - gpCoords[2], 2));
+                if (distance < cuurentDistance)
+                {
+                    cuurentDistance = distance;
+                    id = element.Key;
+                }
+            }
+
+            var foundGpCoords =
+                ((ContinuumElement3DGrowth)model.ElementsDictionary[id]).GetGaussPointsCoordinates(0);
+            Console.WriteLine("GP with coordinates: " + foundGpCoords[0] + " " + foundGpCoords[1] + " " +
+                              foundGpCoords[2] +
+                              " is in element with id: " + id);
+            return id;
+        }
+
+        public static List<INode> FindElementNodesFromElementId(Model model, int elementId)
 		{
 			var element = model.ElementsDictionary[elementId];
 			var nodes = new List<INode>();

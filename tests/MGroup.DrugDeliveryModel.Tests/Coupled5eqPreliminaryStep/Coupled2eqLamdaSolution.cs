@@ -356,8 +356,9 @@ namespace MGroup.DrugDeliveryModel.Tests.Coupled5eqPreliminaryStep
 
         #region growth log
         private static ConvectionDiffusionDof lamdaMonitorDOF = ConvectionDiffusionDof.UnknownVariable;
-        int lamdanodeIdToMonitor = 0; //Todo5eq perform search for log etc.
+        static int lamdaElemIdToMonitor = 0; //Todo5eq perform search for log etc.
         static double[] monitoredGPcoordsLamda = { 0.025, 0.025, 0.025 };
+        static int lamdanodeIdToMonitor = -1;
         //TODo5eq perform searchh for Tcell logs as well
         #endregion
 
@@ -511,7 +512,6 @@ namespace MGroup.DrugDeliveryModel.Tests.Coupled5eqPreliminaryStep
             double[] coxResults = new double[(int)(totalTime / timeStep)];
             double[] tCell = new double[(int)(totalTime / timeStep)];
 
-
             int monitoredGPVelocity_elemID = -1; // TODO Orestis this will be deleeted if new logs are implemented in a right way.
             int monitoredGPpressureGrad_elemID = -1; // TODO Orestis this will be deleeted if new logs are implemented in a right way.
 
@@ -519,23 +519,14 @@ namespace MGroup.DrugDeliveryModel.Tests.Coupled5eqPreliminaryStep
             #endregion
 
 
-            //Create Model For Pressure
-            var eq78Model = new Eq78ModelProviderForStaggeredSolutionex7ref(comsolReader, k_th_tumor, k_th_host, Lp, Sv, pv,
-                LplSvl_tumor, LplSvl_host, pl, velocityDivergenceAtElementGaussPoints, pressureMonitorID, eq7n8dofTypeToMonitor, pressureDirichletBC, pressureNeumannBC);
+            
 
             //Create Model For Structural
             var eq9Model = new Eq9ModelProviderForStaggeredSolutionEx7Ref(comsolReader, Sc, miNormal, kappaNormal, miTumor,
                 kappaTumor, density, timeStep, totalTime, lambda, pressureTensorDivergenceAtElementGaussPoints,
                 structuralMonitorID, eq9dofTypeToMonitor, structuralNeumannBC, structuralDirichletBC);
 
-            //Create Model For Oxygen
-            var coxModel = new CoxVanillaSourceModelBuilder(comsolReader, FluidSpeed, independentLinearSource, dependentLinearSource, doxParametric, Aox, Kox, PerOx, SvCox, CInitOx,
-
-                                            coxMonitorID, coxMonitorDOF, convectionDiffusionDirichletBC, convectionDiffusionNeumannBC);
-
-            //Create Model For TCell
-            var tCellModel = new TCellModelProvider(K1, K2, domainCOx, solidVelocity, comsolReader,
-                tCellMonitorDOF, tCellMonitorID, tCellDirichletBC, tCellNeumannBC, initialTCellDensity);
+           
 
             var distributedOdeModel = new DistributedOdeModelBuilder(comsolReader, K1, K2, domainCOx, domainT, 1d, lamdaMonitorDOF, lamdanodeIdToMonitor);
 
@@ -543,13 +534,15 @@ namespace MGroup.DrugDeliveryModel.Tests.Coupled5eqPreliminaryStep
             //COMMITED BY NACHO 
             //jkkk bn///////vji typ[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[00u-----------------------------------
 
-            var equationModel = new Coupled2eqLamdaModel(eq78Model, coxModel, eq9Model, tCellModel, distributedOdeModel, comsolReader,
-                domainCOx, domainT, lambda, pressureTensorDivergenceAtElementGaussPoints, velocityDivergenceAtElementGaussPoints,
-                FluidSpeed, solidVelocity, k_th_tumor, timeStep,
-                totalTime, incrementsPertimeStep);
+            var equationModel = new Coupled2eqLamdaModel(eq9Model, distributedOdeModel, comsolReader,
+                 lambda,   timeStep, totalTime, incrementsPertimeStep);
 
             #region loggin defteri perioxi gia logs
-
+            var geometriccModel = eq9Model.GetModel();
+            lamdaElemIdToMonitor = Utilities.FindElementIdFromGaussPointCoordinates(geometriccModel, monitoredGPcoordsLamda, 1e-1); //Todo Orestis delete these commands1
+            lamdanodeIdToMonitor = distributedOdeModel.GetDummyNodeIdForElementId(lamdaElemIdToMonitor,0);
+            distributedOdeModel.MonitorNodeId = lamdanodeIdToMonitor;
+            double[] lamdaResults = new double[(int)(totalTime / timeStep)]; // copy kai ekei pou to gemizoume
             #endregion
 
             var staggeredAnalyzer = new StepwiseStaggeredAnalyzer(equationModel.ParentAnalyzers, equationModel.ParentSolvers, equationModel.CreateModel, maxStaggeredSteps: 200, tolerance: 1E-5);
@@ -567,8 +560,8 @@ namespace MGroup.DrugDeliveryModel.Tests.Coupled5eqPreliminaryStep
                 vfMonitorGpID = Utilities.FindElementIdFromGaussPointCoordinates(equationModel.model[2], vfMonitorGpCoords, 1e-1);
 
                 //nodal logs
-                p_i[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[0].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[0].GetNode(pressureMonitorID), eq7n8dofTypeToMonitor];
-                //p_i[currentTimeStep] = 0d;
+                //p_i[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[0].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[0].GetNode(pressureMonitorID), eq7n8dofTypeToMonitor];
+                lamdaResults[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[0].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[0].GetNode(lamdanodeIdToMonitor), lamdaMonitorDOF];
                 //structuralResultsX[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[1].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[1].GetNode(structuralMonitorID), StructuralDof.TranslationX];
                 //structuralResultsY[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[1].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[1].GetNode(structuralMonitorID), StructuralDof.TranslationY];
                 //structuralResultsZ[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[1].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[1].GetNode(structuralMonitorID), StructuralDof.TranslationZ];
@@ -576,30 +569,16 @@ namespace MGroup.DrugDeliveryModel.Tests.Coupled5eqPreliminaryStep
                 structuralResultsY[currentTimeStep] = 0d;
                 structuralResultsZ[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[1].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[1].GetNode(structuralMonitorID), eq9dofTypeToMonitor];
 
-                //gp (element) logs
-                gp_dP_dx_OverTime[currentTimeStep] = ((ConvectionDiffusionElement3D)equationModel.model[0].ElementsDictionary[monitoredGPpressureGrad_elemID]).xcoeff_OverTimeAtGp1[0];
-                gp_dP_dy_OverTime[currentTimeStep] = ((ConvectionDiffusionElement3D)equationModel.model[0].ElementsDictionary[monitoredGPpressureGrad_elemID]).ycoeff_OverTimeAtGp1[0];
-                gp_dP_dz_Overtime[currentTimeStep] = ((ConvectionDiffusionElement3D)equationModel.model[0].ElementsDictionary[monitoredGPpressureGrad_elemID]).zcoeff_OverTimeAtGp1[0];
                 gp_dut_dx_OverTime[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[solidVelocityGPId]).velocityDivergence_term1[0];
                 gp_dvt_dy_OverTime[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[solidVelocityGPId]).velocityDivergence_term2[0];
                 gp_dwt_dz_OverTime[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[solidVelocityGPId]).velocityDivergence_term3[0];
                 gp_div_v_OverTime[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[solidVelocityGPId]).velocityDivergence[0];
-
-                var fluidVelocityX = coxModel.FluidSpeed[monitoredGPVelocity_elemID][0];
-                var fluidVelocityY = coxModel.FluidSpeed[monitoredGPVelocity_elemID][1];
-                var fluidVelocityZ = coxModel.FluidSpeed[monitoredGPVelocity_elemID][2];
-                uFluid_t[currentTimeStep] = fluidVelocityX;
-                vFluid_t[currentTimeStep] = fluidVelocityY;
-                wFluid_t[currentTimeStep] = fluidVelocityZ;
 
                 solidVelocityResultsX[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[solidVelocityGPId]).velocity[0][0];
                 solidVelocityResultsY[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[solidVelocityGPId]).velocity[0][1];
                 solidVelocityResultsZ[currentTimeStep] = ((ContinuumElement3DGrowth)equationModel.model[1].ElementsDictionary[solidVelocityGPId]).velocity[0][2];
 
 
-                coxResults[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[2].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[2].GetNode(coxMonitorID), coxMonitorDOF];
-                tCell[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[3].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[3].GetNode(tCellMonitorID), tCellMonitorDOF];
-                //vf_calculated.Add(FluidSpeed[vfMonitorGpID]);
                 //model maximus (DO NOT ERASE)
                 //modelMaxVelDivOverTime[currentTimeStep] = velocityDivergenceAtElementGaussPoints.Select(x => Math.Abs(x.Value[0])).ToArray().Max();
                 //modelMax_dP_dxOverTime[currentTimeStep] = pressureTensorDivergenceAtElementGaussPoints.Select(x => Math.Abs(x.Value[0][0])).ToArray().Max();

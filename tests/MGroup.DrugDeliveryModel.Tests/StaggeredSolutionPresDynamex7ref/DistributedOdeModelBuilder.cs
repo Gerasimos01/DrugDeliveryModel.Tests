@@ -50,7 +50,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
         public Dictionary<int, Tuple<CellType, Node[], int>> ElementDummyNodesConnectivity { get; set; }
 
         private ConvectionDiffusionDof MonitorDOFType { get; }
-        private int MonitorNodeId { get; }
+        public int MonitorNodeId { get; set; }
 
         public DistributedOdeModelBuilder(ComsolMeshReader modelReader, double k1, double k2, Dictionary<int, double> domainCOx, Dictionary<int, double> T, double initialCondition,
             ConvectionDiffusionDof monitorDOFType, int monitorNodeId)
@@ -70,7 +70,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
 
             ElementDummyNodesConnectivity = new Dictionary<int, Tuple<CellType, Node[], int>>();
 
-            int dummyNodeId = 0;    
+            int dummyNodeId = 0;
             foreach (var elementConnectivity in modelReader.ElementConnectivity)
             {
                 if(elementConnectivity.Value.Item1== CellType.Tet4)
@@ -85,7 +85,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
                         var node = new Node(id: dummyNodeId, x: 0, y: 0, z: 0);
                         elemDummyNodes[i1] = node;
                         DummyNodesDictionary.Add(key: dummyNodeId, node);
-                       dummyNodeId++;
+                        dummyNodeId++;
                     }
 
                     ElementDummyNodesConnectivity.Add(key: elementConnectivity.Key, value: new Tuple<CellType, Node[], int>(CellType.Tet4, elemDummyNodes, elementConnectivity.Value.Item3));
@@ -145,12 +145,12 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             var intitalConditions = new List<INodalConvectionDiffusionInitialCondition>();
             foreach (var node in DummyNodesDictionary.Values)
             {
-                
-                    intitalConditions.Add(new NodalInitialUnknownVariable(node, ConvectionDiffusionDof.UnknownVariable, InitialCondition));
-               
+
+                intitalConditions.Add(new NodalInitialUnknownVariable(node, ConvectionDiffusionDof.UnknownVariable, InitialCondition));
+
 
             }
-            
+
             model.InitialConditions.Add(new ConvectionDiffusionInitialConditionSet(intitalConditions,
                 new DomainInitialUnknownVariable[]
                 { }));
@@ -252,7 +252,12 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             }
 
 
-            
+
+        }
+
+        public int GetDummyNodeIdForElementId(int lamdaElemIdToMonitorm, int gpNo)
+        {
+            return ElementDummyNodesConnectivity[lamdaElemIdToMonitorm].Item2[gpNo].ID;
         }
     }
 }
