@@ -39,7 +39,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Coupled5eqPreliminaryStep
         const double Sc = 0.1;
 
         private const double timeStep = 1E-5; // in sec
-        const double totalTime = 10E-5; // in sec
+        const double totalTime = 5E-3; // in sec
         static int incrementsPertimeStep = 1;
         static int currentTimeStep = 0;
 
@@ -357,7 +357,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Coupled5eqPreliminaryStep
         #region growth log
         private static ConvectionDiffusionDof lamdaMonitorDOF = ConvectionDiffusionDof.UnknownVariable;
         static int lamdaElemIdToMonitor = 0; //Todo5eq perform search for log etc.
-        static double[] monitoredGPcoordsLamda = { 0.025, 0.025, 0.025 };
+        static double[] monitoredGPcoordsLamda = { 0.08, 0.08, 0.08 };
         static int lamdanodeIdToMonitor = -1;
         //TODo5eq perform searchh for Tcell logs as well
         #endregion
@@ -533,7 +533,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Coupled5eqPreliminaryStep
 
                                             coxMonitorID, coxMonitorDOF, convectionDiffusionDirichletBC, convectionDiffusionNeumannBC);
 
-            
+
 
             var distributedOdeModel = new DistributedOdeModelBuilder(comsolReader, K1, K2, domainCOx, domainT, 1d, lamdaMonitorDOF, lamdanodeIdToMonitor);
 
@@ -570,6 +570,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Coupled5eqPreliminaryStep
 
                 //nodal logs
                 p_i[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[0].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[0].GetNode(pressureMonitorID), eq7n8dofTypeToMonitor];
+
                 lamdaResults[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[3].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[3].GetNode(lamdanodeIdToMonitor), lamdaMonitorDOF];
 
                 //p_i[currentTimeStep] = 0d;
@@ -678,7 +679,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Coupled5eqPreliminaryStep
 
                 #endregion
 
-                
+
                 for (int j = 0; j < equationModel.ParentAnalyzers.Length; j++)
                 {
                     (equationModel.ParentAnalyzers[j] as NewmarkDynamicAnalyzer).AdvanceStep();
@@ -707,7 +708,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Coupled5eqPreliminaryStep
             CSVExporter.ExportMatrixToCSV(CSVExporter.ConverVectorsTo2DArray(fluidVelocity), "../../../Coupling78_9_13/results/vFluid_GP_mslv.csv");
             CSVExporter.ExportMatrixToCSV(CSVExporter.ConverVectorsTo2DArray(solidVelocities), "../../../Coupling78_9_13/results/vSolid_GP_mslv.csv");
 
-            
+
             True(ResultChecker.CheckResults(wFluid_t, expected_fluid_velocity(), 1e-3));
             True(ResultChecker.CheckResults(structuralResultsZ, expectedDisplacments(), 1e-3));
             True(ResultChecker.CheckResults(gp_dP_dx_OverTime, expected_dpdx_values(), 1e-3));

@@ -122,7 +122,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
                     var coeffs = new double[numOfNecessaryDymmies];
                     var cox = DomainCOx[elementConnectivity.Key];
                     var t = domainT[elementConnectivity.Key];
-                    coeffs[0] = ((double)1 / 3) * K1 * cox * t / (K2 + cox);
+                    coeffs[0] = ((double)1 / 3) * K1 * cox * t / (K2 + cox); // * scaling factor ;
                     var element1 = new DistributedFirstOrderODEElement3D(elementConnectivity.Value.Item2, quadrature, coeffs);
                     element1.ID = elementConnectivity.Key; ;
                     model.ElementsDictionary.Add(elementConnectivity.Key, element1);
