@@ -87,7 +87,7 @@ namespace MGroup.DrugDeliveryModel.Tests.COx.EqCoxLinAndNLin
         //For full analysis
         //private const double TotalTime = 1E-2;
         //For Test
-        private const double TotalTime = 4000E-5;
+        private const double TotalTime = 20E-5;
 
 
         /// <summary>
@@ -208,7 +208,7 @@ namespace MGroup.DrugDeliveryModel.Tests.COx.EqCoxLinAndNLin
 
             CSVExporter.ExportVectorToCSV(cox, $"../../../Integration/linear_diffusion_x1000_conv_2_32_mslv_Dox_factor_{factor}.csv");
             //Console.WriteLine("FINISHED solving Cox Non-Linear prod");
-            //Assert.True(ResultChecker.CheckResults(cox, expectedLinSolution, 1e-6));
+            Assert.True(ResultChecker.CheckResults(cox, expectedLinSolution, 1e-6));
 
         }
 
