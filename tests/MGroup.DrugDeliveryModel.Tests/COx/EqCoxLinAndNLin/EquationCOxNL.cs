@@ -19,6 +19,7 @@ using MGroup.Constitutive.ConvectionDiffusion;
 using MGroup.Constitutive.ConvectionDiffusion.BoundaryConditions;
 using MGroup.Constitutive.ConvectionDiffusion.InitialConditions;
 using System.Diagnostics;
+using MGroup.FEM.ConvectionDiffusion.Tests.Commons;
 
 namespace MGroup.DrugDeliveryModel.Tests.Integration
 {
@@ -82,7 +83,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
 
 
         //---------------------------------------Time Discretization Specs------------------------------
-        private const double TotalTime = 1000E-5;
+        private const double TotalTime = 10E-5;
 
         /// <summary>
         /// For increased accuracy use time-step of order 1E-5
@@ -121,11 +122,28 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             //return (double Cox) => -PerOx * Sv; //Linear
         }
 
-        [Theory]
-        [InlineData("../../../DataFiles/workingTetMesh2185_1Domain.mphtxt")]
-        public void SolveEquationCOxNonLinearProduction(string fileName)
+        [Fact]
+        public void RunPatrametic()
         {
+            SolveEquationCOxNonLinearProduction("../../../DataFiles/workingTetMesh2185_1Domain.mphtxt", 10);
+            SolveEquationCOxNonLinearProduction("../../../DataFiles/workingTetMesh2185_1Domain.mphtxt", 100);
+            SolveEquationCOxNonLinearProduction("../../../DataFiles/workingTetMesh2185_1Domain.mphtxt", 500);
+            SolveEquationCOxNonLinearProduction("../../../DataFiles/workingTetMesh2185_1Domain.mphtxt", 1000);
+            SolveEquationCOxNonLinearProduction("../../../DataFiles/workingTetMesh2185_1Domain.mphtxt", 0);
+        }
+
+        [Theory]
+        [InlineData("../../../DataFiles/workingTetMesh2185_1Domain.mphtxt", 1)]
+        public void SolveEquationCOxNonLinearProduction(string fileName, int factor)
+        {
+            var DoxParametric = factor * 1.79E-4;
+
             var mesh = new ComsolMeshReader(fileName);
+
+            FluidSpeed = new Dictionary<int, double[]>();
+            T = new Dictionary<int, double>();
+            ProductionFuncsWithoutConstantTerm = new Dictionary<int, Func<double, double>>();
+            ProductionFuncsWithoutConstantTermDerivative = new Dictionary<int, Func<double, double>>();
 
             foreach (var elem in mesh.ElementConnectivity)
             {
@@ -145,7 +163,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
 
             var nodeIdToMonitor = Utilities.FindNodeIdFromNodalCoordinates(mesh.NodesDictionary, monitorNodeCoords, 1e-4);
 
-            var modelBuilder = new CoxModelBuilder(mesh, FluidSpeed, Dox, Aox, Kox, PerOx, Sv, CiOx, T, CoxInitialCondition, independentLinearSource, null, ProductionFuncsWithoutConstantTerm, ProductionFuncsWithoutConstantTermDerivative, nodeIdToMonitor, coxMonitorDOF, convectionDiffusionDirichletBC, convectionDiffusionNeumannBC);
+            var modelBuilder = new CoxModelBuilder2(mesh, FluidSpeed, DoxParametric, Aox, Kox, PerOx, Sv, CiOx, T, CoxInitialCondition, independentLinearSource, null, ProductionFuncsWithoutConstantTerm, ProductionFuncsWithoutConstantTermDerivative, nodeIdToMonitor, coxMonitorDOF, convectionDiffusionDirichletBC, convectionDiffusionNeumannBC);
             var model = modelBuilder.GetModel();
             modelBuilder.AddBoundaryConditions(model);
 
@@ -163,9 +181,13 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
                 cox[i1] = ((DOFSLog)timeStepResultsLog).DOFValues[model.GetNode(nodeIdToMonitor), coxMonitorDOF];
             }
 
-            CSVExporter.ExportVectorToCSV(cox, "../../../Integration/cox_non_linear_nodes_mslv.csv");
-            Console.WriteLine("FINISHED solving Cox Non-Linear prod");
-            Assert.True(CompareResults(cox));
+            Assert.True(ResultChecker.CheckResults(cox, expectedCox(), 1e-3));
+
+
+            CSVExporter.ExportVectorToCSV(cox, $"../../../Integration/non_linear_conv_2_32_mslv_Dox_factor_{factor}.csv");
+            //Console.WriteLine("FINISHED solving Cox Non-Linear prod");
+            //Assert.True(ResultChecker.CheckResults(cox, expectedLinSolution, 1e-6));
+
 
         }
 
@@ -190,6 +212,23 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
             }
 
             return ret;
+        }
+
+        public static double[] expectedCox() // https://docs.google.com/spreadsheets/d/1gzNWnT_bilA-xkoLBD2q9FRN3xuwSBGa/edit#gid=1721757444
+        {
+            return new double[]
+            {
+                -6.295234868815485E-05,
+                -0.0001871114319498195,
+                -0.00030780219731979367,
+                -0.00042507191430281663,
+                -0.00053896866561862849,
+                -0.00064953948083118637,
+                -0.000756830728680026,
+                -0.00086088843213169845,
+                -0.00096175852281297656,
+                -0.0010594870459278288,
+            };
         }
 
 
