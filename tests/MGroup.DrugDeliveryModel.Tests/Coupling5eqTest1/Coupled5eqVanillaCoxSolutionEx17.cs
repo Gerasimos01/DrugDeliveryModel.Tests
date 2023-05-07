@@ -355,8 +355,9 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
 
         #region growth log
         private static ConvectionDiffusionDof lamdaMonitorDOF = ConvectionDiffusionDof.UnknownVariable;
-        int lamdanodeIdToMonitor = 0; //Todo5eq perform search for log etc.
-        static double[] monitoredGPcoordsLamda = { 0.025,0.025, 0.025 };
+        static int lamdaElemIdToMonitor = 0; //Todo5eq perform search for log etc.
+        static double[] monitoredGPcoordsLamda = { 0.08, 0.08, 0.08 };
+        static int lamdanodeIdToMonitor = -1;
         //TODo5eq perform searchh for Tcell logs as well
         #endregion
 
@@ -547,6 +548,14 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
                 FluidSpeed,solidVelocity, k_th_tumor, timeStep,
                 totalTime, incrementsPertimeStep);
 
+            #region loggin defteri perioxi gia logs
+            var geometriccModel = eq9Model.GetModel();
+            lamdaElemIdToMonitor = Utilities.FindElementIdFromGaussPointCoordinatesStructural(geometriccModel, monitoredGPcoordsLamda, 1e-1); //Todo Orestis delete these commands1
+            lamdanodeIdToMonitor = distributedOdeModel.GetDummyNodeIdForElementId(lamdaElemIdToMonitor, 0);
+            distributedOdeModel.MonitorNodeId = lamdanodeIdToMonitor;
+            double[] lamdaResults = new double[(int)(totalTime / timeStep)]; // copy kai ekei pou to gemizoume
+            #endregion
+
             var staggeredAnalyzer = new StepwiseStaggeredAnalyzer(equationModel.ParentAnalyzers, equationModel.ParentSolvers, equationModel.CreateModel, maxStaggeredSteps: 200, tolerance: 1E-5);
             for (currentTimeStep = 0; currentTimeStep < totalTime / timeStep; currentTimeStep++)
             {
@@ -563,6 +572,9 @@ namespace MGroup.DrugDeliveryModel.Tests.Integration
 
                 //nodal logs
                 p_i[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[0].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[0].GetNode(pressureMonitorID), eq7n8dofTypeToMonitor];
+
+                lamdaResults[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[3].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[3].GetNode(lamdanodeIdToMonitor), lamdaMonitorDOF];
+
                 //p_i[currentTimeStep] = 0d;
                 //structuralResultsX[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[1].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[1].GetNode(structuralMonitorID), StructuralDof.TranslationX];
                 //structuralResultsY[currentTimeStep] = ((DOFSLog)equationModel.ParentAnalyzers[1].ChildAnalyzer.Logs[0]).DOFValues[equationModel.model[1].GetNode(structuralMonitorID), StructuralDof.TranslationY];

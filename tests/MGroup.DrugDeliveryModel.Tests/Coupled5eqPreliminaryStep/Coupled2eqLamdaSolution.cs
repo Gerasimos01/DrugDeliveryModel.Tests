@@ -357,7 +357,7 @@ namespace MGroup.DrugDeliveryModel.Tests.Coupled5eqPreliminaryStep
         #region growth log
         private static ConvectionDiffusionDof lamdaMonitorDOF = ConvectionDiffusionDof.UnknownVariable;
         static int lamdaElemIdToMonitor = 0; //Todo5eq perform search for log etc.
-        static double[] monitoredGPcoordsLamda = { 0.025, 0.025, 0.025 };
+        static double[] monitoredGPcoordsLamda = { 0.08, 0.08, 0.08 };
         static int lamdanodeIdToMonitor = -1;
         //TODo5eq perform searchh for Tcell logs as well
         #endregion
